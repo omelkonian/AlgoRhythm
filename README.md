@@ -1,6 +1,5 @@
 # AFP-Project
 
-## Music
 * Euterpea
   - Descendant of Haskore ([paper](https://pdfs.semanticscholar.org/d6f7/5a1ef317f332f6ddd8513767693aea307cbd.pdf?_ga=2.152474619.393039067.1518352773-1445241241.1513027481)/[implementation](https://hackage.haskell.org/package/haskore))
   - [Examples](http://www.euterpea.com/examples/)
@@ -23,6 +22,9 @@
   - [Evolutionary Music Composer integrating Formal Grammar](https://www.researchgate.net/publication/220741767_Evolutionary_Music_Composer_integrating_Formal_Grammar)
   - [Fugue Composition with Counterpoint Melody Generation Using Genetic Algorithms](https://link.springer.com/content/pdf/10.1007%2F978-3-540-31807-1_7.pdf)
 
-## Linguistics-MCFG
-* [Paper](https://pdfs.semanticscholar.org/fff9/c5ea4d40bd9a53bee9268012b6aec881a548.pdf?_ga=2.240760003.1779610836.1518262566-1445241241.1513027481)
-* [Implementation](https://github.com/heatherleaf/MCFParser.py)
+### Orestis Stuff (unstable! only for inspiration/help)
+- Dataflow music thingies [here](https://github.com/rhea-flow/rhea-music/)
+  + [chaos](https://github.com/rhea-flow/rhea-music/tree/master/src/main/scala/rhea_music/chaos)
+  + [examples](https://github.com/rhea-flow/rhea-music/blob/master/src/test/scala/Adhoc.scala)
+  + all the rest are music data types, etc...
+- a tentative Haskell [library](https://github.com/omelkonian/hevolution) for genetic algorithms
