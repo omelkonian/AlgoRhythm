@@ -1,0 +1,97 @@
+\documentclass[12pt,a4paper]{article}
+
+\usepackage{chronosys}
+
+\usepackage{minted}
+
+% Tables
+\usepackage{multicol}
+\usepackage{multirow}
+\usepackage{csquotes}
+\usepackage{fullpage}
+
+% Colors
+\usepackage{xcolor, color, colortbl}
+\colorlet{gray}{gray!70}
+\colorlet{green}{green!50}
+\definecolor{darkblue}{HTML}{1D577A}
+\definecolor{rred}{HTML}{C03425}
+\definecolor{darkgreen}{HTML}{8BB523}
+\definecolor{ppurple}{HTML}{6B1B7F}
+\definecolor{pblack}{HTML}{000000}
+\definecolor{darkyellow}{HTML}{C0B225}
+
+% Links
+\usepackage{hyperref}
+\definecolor{linkcolour}{rgb}{0,0.2,0.6}
+\hypersetup{colorlinks,breaklinks,urlcolor=linkcolour,linkcolor=linkcolour,citecolor=blue}
+
+\title{\textbf{Project Proposal \\ \small{Advanced Functional Programming}}}
+\author{\small{Joris ten Tusscher, Cas van der Rest, Orestis Melkonian}}
+\date{}
+
+% Macros
+\newcommand{\site}[1]{\footnote{\url{#1}}}
+\newcommand{\code}[1]{\mintinline{bash}{#1}}
+
+\begin{document}
+\maketitle
+
+\section{Domain}
+
+\subsection{Algorithmic Music Composition}
+\subsection{Generation Techniques}
+\subsection{Motivation}
+\cite{categorial}
+
+\section{Problem}
+
+\subsection{Music-Representation DSL}
+\subsubsection{Euterpea}
+Euterpea\site{https://hackage.haskell.org/package/Euterpea}
+\subsubsection{Export to MIDI}
+Midi\site{http://hackage.haskell.org/package/midi}
+\subsubsection{Render to music scores}
+Lilypond\site{https://hackage.haskell.org/package/lilypond}
+
+\subsection{Generation DSL}
+\subsubsection{Chaos Functions}
+\cite{chaos}
+\subsubsection{L-Systems}
+\cite{lsystem}
+\subsubsection{QuickCheck}
+
+\subsection{Constraints DSL}
+\subsubsection{Restrict Generation DSL}
+\subsubsection{Constraint Specification}
+\subsubsection{Efficiency \& Proactive Filtering}
+
+\subsection{Application}
+\subsubsection{Example Applications}
+\subsubsection{Built-in Utilities}
+\subsubsection{Simple...}
+
+\section{Planning}
+Below we give the estimated schedule across the six weeks available:
+\vspace{1cm}
+\setupchronology{startyear=0, stopyear=6, startdate=false, stopdate=false, width=.9\hsize, height=.5cm, arrow=false}
+\setupchronoperiode{textstyle=\bf\footnotesize}
+\setupchronoevent{date=false, textstyle=\it\large, markdepth=1.5cm}
+\chronoperiodecoloralternation{rred, darkgreen, rred, darkgreen}
+
+\startchronology
+\chronoevent{0}{Proposal(20/2)}
+\chronoperiode{0}{2}{Music Representation}
+\chronoperiode{2}{3}{Generation}
+\chronoevent{3}{Report(12/3)}
+\chronoperiode{3}{5}{Constraints}
+\chronoperiode{5}{6}{Applications}
+\chronoevent{6}{Submission(5/4)}
+\stopchronology
+\vspace{.5cm}
+
+\bibliographystyle{ieeetr}
+\bibliography{sources}
+
+\end{document}
+
