@@ -1,7 +1,9 @@
 \documentclass[12pt,a4paper]{article}
-
+ 
+% Timeline
 \usepackage{chronosys}
 
+% Code
 \usepackage{minted}
 
 % Tables
@@ -26,6 +28,7 @@
 \definecolor{linkcolour}{rgb}{0,0.2,0.6}
 \hypersetup{colorlinks,breaklinks,urlcolor=linkcolour,linkcolor=linkcolour,citecolor=blue}
 
+% Title
 \title{\textbf{Project Proposal \\ \small{Advanced Functional Programming}}}
 \author{\small{Joris ten Tusscher, Cas van der Rest, Orestis Melkonian}}
 \date{}
@@ -61,19 +64,30 @@ Lilypond\site{https://hackage.haskell.org/package/lilypond}
 \cite{lsystem}
 \subsubsection{QuickCheck}
 
-\subsection{Constraints DSL}
-\subsubsection{Restrict Generation DSL}
-\subsubsection{Constraint Specification}
-\subsubsection{Efficiency \& Proactive Filtering}
+\subsection{Constraint DSL}
+As the solution space defined by our categorial grammar alone is huge, searching for solutions exhibiting specific desired properties (e.g. melodies involving notes from a certain scale) would be computationally infeasible.
 
-\subsection{Application}
-\subsubsection{Example Applications}
-\subsubsection{Built-in Utilities}
-\subsubsection{Simple...}
+To remedy this, we will implement a DSL that will allow the programmer to naturally express constraints, which will be respected by the musical artefacts we generate; these will model musical properties such as restricted pitch range. As you would expect, these constraints will not be applied posthumously as a filter, but integrated in the generation process, effectively pruning the search space.
+
+\subsection{Applications}
+Apart from the above, we also aim to implement several applications, showcasing the features of our library:
+\vspace{-15pt}
+\paragraph{Music Representation} We will provide code snippets that demonstrate one's ability to write concrete music pieces using our DSL and to export them in MIDI format or music notation.
+\vspace{-15pt}
+\paragraph{Generation} We plan to implement several common generation techniques, such as creating melodies from 
+chaotic/complex functions and structuring pieces via an L-system grammar.
+\vspace{-15pt}
+\paragraph{Constraints} We will demonstrate how our library can be used to for automatic generation of musical exercises, utilizing a variety of constraints.
+\vspace{5pt}
+
+An important property of our library that we wish to demonstrate with our examples, is that it is not geared specifically towards single-voice melodies, but can be used as easily to generate rhythm, harmony or anything combining these three principal elements of music.
+If time permits, we will also implement a simple web interface, which runs our library on the back-end and allows the user to select a number of pre-defined constraints in order to generate, for instance, musical exercises.
+Last but not least, the library will shipped with its own "Prelude", providing common patterns/techniques for algorithmic music composition.
+
 
 \section{Planning}
 Below we give the estimated schedule across the six weeks available:
-\vspace{1cm}
+\vspace{.5cm}
 \setupchronology{startyear=0, stopyear=6, startdate=false, stopdate=false, width=.9\hsize, height=.5cm, arrow=false}
 \setupchronoperiode{textstyle=\bf\footnotesize}
 \setupchronoevent{date=false, textstyle=\it\large, markdepth=1.5cm}
