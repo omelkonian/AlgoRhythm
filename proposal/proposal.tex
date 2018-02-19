@@ -48,21 +48,30 @@
 \cite{categorial}
 
 \section{Problem}
+The goal of the research is to create a Haskell package that can be used to formally describe music, generate music that satisfies certain constraints specified by the user, and export music to more universal formats.
 
 \subsection{Music-Representation DSL}
-\subsubsection{Euterpea}
-Euterpea\site{https://hackage.haskell.org/package/Euterpea}
-\subsubsection{Export to MIDI}
-Midi\site{http://hackage.haskell.org/package/midi}
-\subsubsection{Render to music scores}
-Lilypond\site{https://hackage.haskell.org/package/lilypond}
+The music-representation DSL will be an EDSL in Haskell that can be used to formally describe music. It can be used to store information such as the notes present in the music piece, the musical dynamic throughout the piece (e.g. pianissimo or forte), or the key.
+
+Since most users want to do more practical things with the music that is stored using the music-representation DSL, data written in the DSL can be converted to the Euterpea DSL\site{https://hackage.haskell.org/package/Euterpea}. Euterpea is a Haskell package developed by, among others, Paul Hudak, that can be used for music representation, but also has many other features than the music-representation DSL that will be developed for this project won't have. For example, it can analyse music and thus derive properties, perform audio synthesis, and read and export MIDI (Musical Instrument Digital Interface) data. Therefore, Euterpea would be a great tool for actually generating audio from the music that is described in our music-representation DSL, and it can also be used to export the information described in our EDSL to MIDI files. On top of Euterpea, we could use the Lilypond package\site{https://hackage.haskell.org/package/lilypond} to export the music to nice traditional music scores.
+
+%\subsubsection{Euterpea}
+%Euterpea
+%\subsubsection{Export to MIDI}
+%Midi\site{http://hackage.haskell.org/package/midi}
+%\subsubsection{Render to music scores}
+%Lilypond\site{https://hackage.haskell.org/package/lilypond}
 
 \subsection{Generation DSL}
+The generation DSL does not store actual music. Rather, it can be used for music composition. The generation can be done in multiple ways.
+
 \subsubsection{Chaos Functions}
-\cite{chaos}
-\subsubsection{L-Systems}
-\cite{lsystem}
+Chaotic functions generate completely different output as soon as their input changes by a minuscule amount. Therefore, they can be used to generate completely different music every time their input is changed by a fraction.
+%\cite{chaos}
+\subsubsection{Lindenmayer Systems}
+L-systems \cite{lsystem-original} are a type of formal grammar invented at Utrecht University in 1968. They have an initial string and a set of production rules to expand this initial string into a longer string of symbols. The final string of symbols can be converted to something else, oftentimes trees. One can also convert the symbols to music however \cite{lsystem}.
 \subsubsection{QuickCheck}
+Another way to generate music is to use QuickCheck. Using custom generator and arbitrary instances, it can be made possible to generate music that satisfies the information stored using the constraint DSL.
 
 \subsection{Constraint DSL}
 As the solution space defined by our categorial grammar alone is huge, searching for solutions exhibiting specific desired properties (e.g. melodies involving notes from a certain scale) would be computationally infeasible.
