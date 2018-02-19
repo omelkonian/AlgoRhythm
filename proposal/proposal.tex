@@ -41,11 +41,22 @@
 \maketitle
 
 \section{Domain}
-
+This project concerns the development of a library that aids programmers in the process of composing musical pieces. We will aim to do so by providing tools for a programmer to easily employ various techniques of algorithmic music composition through the usage of various DSL's. 
 \subsection{Algorithmic Music Composition}
+The notion of algorithmic music composition usually includes all methods in which music is generated through some set of predefined rules. When considering that a piece of music (in a rudimentary sense) consists of various aspects, such as harmony and rhythm, for which a clearly defined set of choices exist within their respective domain, it is easy to see that computers may generate musical pieces by employing an algorithm that decides which choices to make within these domains (e.g. which notes to play, when to play them and for how long).
+
 \subsection{Generation Techniques}
+Various approaches towards algorithmic music composition have been studied. Notable generation techniques include: 
+\begin{itemize}
+\item 
+Chaos functions: generating notes from functions whose output is extremely sensitive to their input
+\item
+Generative grammars (L-systems)
+\item
+Evolutionary algorithms
+\end{itemize}
 \subsection{Motivation}
-\cite{categorial}
+Motivation for this project is an interest in music theory as well as the aforementioned techniques for algorithmic composition of the undertakers. 
 
 \section{Problem}
 The goal of the research is to create a Haskell package that can be used to formally describe music, generate music that satisfies certain constraints specified by the user, and export music to more universal formats.
