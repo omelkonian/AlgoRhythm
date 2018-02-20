@@ -1,5 +1,9 @@
-\documentclass[10pt,a4paper]{article}
- 
+\documentclass[11pt,a4paper]{article}
+
+% Geometry
+\usepackage{titling}
+\setlength{\droptitle}{-7em}
+
 % Timeline
 \usepackage{chronosys}
 
@@ -39,26 +43,27 @@
 
 \begin{document}
 \maketitle
+\vspace{-50pt}
 
 \section{Domain}
-This project concerns the development of a library that aids programmers in the process of composing musical pieces. We will aim to do so by providing tools for a programmer to easily employ various techniques of algorithmic music composition through the usage of various DSLs. 
-\vspace{-10pt}
+This project concerns the development of a library that aids programmers in the process of composing musical pieces. We will aim to do so by providing tools for a programmer to easily employ various techniques of algorithmic music composition through the usage of various DSLs.\vspace{-10pt}
 \paragraph{Algorithmic Music Composition}
-The notion of algorithmic music composition usually includes all methods, in which music is computationally generated. When considering that a piece of music fundamentally consists of melody, rhythm and harmony, that take values from a finite domain. Therefore, it is easy to see that computers may generate musical pieces by employing an algorithm that decides which choices to make within these domains (e.g. which notes, when to play them, according to which harmonic rules).
+The notion of algorithmic music composition usually includes all methods in which music is computationally generated. Fundamentally, a piece of music consists of melody, rhythm and harmony, which take values from a finite domain (at least in western tonal music). Therefore, it is easy to see that computers may generate musical pieces by an algorithm process that decides which choices to make within these domains (e.g. which notes, when to play them, according to which harmonic rules).
 \vspace{-10pt}
 \paragraph{Motivation}
-We drew inspiration for this project by a paper in the FARM workshop at ICFP 2017\cite{categorial}, which follows a linguistic approach to algorithmic music generation and presents a \textit{categorial grammar} for music. Unfortunately, the author only provides a primitive Python proof-of-concept, although this approach fits perfectly in the context of strongly-typed functional programming, since categorial grammars are type-logical and lend themselves to semantics in the typed $\lambda$-calculus. Hence, generating music reduces to the problem of \textit{program synthesis} of valid lambda terms.
+We drew inspiration from a paper in the FARM workshop at ICFP 2017, which follows a linguistic approach to algorithmic music composition and presents a \textit{categorial grammar} for music\cite{categorial}. Unfortunately, the author only provides a primitive proof-of-concept implementation in Python, although it would fit perfectly in the context of strongly-typed functional programming. This is due to the fact, that categorial grammars are type-logical and lend themselves to semantics in the typed $\lambda$-calculus\cite{moortgat}. Hence, generating music reduces to the problem of \textit{program synthesis}(i.e. generating valid $\lambda$-terms that conform to some specification).
 
 \section{Problem}
 The goal of the research is to create a Haskell package that can be used to formally describe music, generate music that satisfies certain constraints specified by the user, and export music to more universal formats.
 
 \subsection{Music-Representation DSL}
-The music-representation DSL will be an EDSL in Haskell that can be used to formally describe music. It can be used to store information such as the notes present in the music piece, the musical dynamic throughout the piece (e.g. pianissimo or forte), or the key.
+Music representation will be possible through a strongly-typed DSL that can be used to formally describe music. It can be used to store information such as the notes present in the music piece, the musical dynamic throughout the piece (e.g. pianissimo or forte), or the key.
 
 Since much of the needed functionality is already implemented in the Euterpea package\site{https://hackage.haskell.org/package/Euterpea}, we will try to reuse as many features it offers as possible. Euterpea is a Haskell package developed primarily by Paul Hudak, that can represent/analyse music and thus derive properties, perform audio synthesis, and read and export MIDI (Musical Instrument Digital Interface) data. On top of that, we could use the Lilypond package\site{https://hackage.haskell.org/package/lilypond} to render the music to traditional music scores.
 
 \subsection{Generation DSL}
-Apart from representing music, we would like to randomly generate it. To that end, we will provide a generation DSL, in order to make it possible to write custom generators. However, for the sake of convenience and usefulness, it should be possible to map arbitrary values to musical ones (e.g. real numbers $\mapsto$ notes).
+Apart from representing music, we would like to randomly generate it. To that end, we will provide a generation DSL, in order to make it possible to write custom generators. For the sake of convenience and usefulness, it should also be possible to map arbitrary values to musical ones (e.g. numbers $\mapsto$ notes).
+
 \paragraph{QuickCheck}
 A possible approach would be to base our generation DSL on top of QuickCheck, by utilizing the Gen and Arbitrary typeclasses.
 
@@ -68,15 +73,13 @@ As the solution space defined by our categorial grammar alone is huge, searching
 To remedy this, we will implement a DSL that will allow the programmer to naturally express constraints, which will be respected by the musical artefacts we generate; these will model musical properties such as restricted pitch range. As you would expect, these constraints will not be applied posthumously as a filter, but integrated in the generation process, effectively pruning the search space.
 
 \subsection{Applications}
-Apart from the above, we also aim to implement several applications, showcasing the features of our library:
+Apart from the above, we also aim to showcase the features of our library through several example applications:
 \vspace{-10pt}
 \paragraph{Music Representation} We will provide code snippets that demonstrate one's ability to write concrete music pieces using our DSL and to export them in MIDI format or music notation.
 \vspace{-10pt}
 \paragraph{Generation} We plan to implement several common generation techniques, such as creating melodies from 
-chaotic/complex functions\cite{chaos} and structuring pieces via an L-system grammar\cite{lsystem}.
-\vspace{-10pt}
+chaotic/complex functions\cite{chaos} and structuring pieces via an L-system grammar\cite{lsystem}.\vspace{-10pt}
 \paragraph{Constraints} We will demonstrate how our library can be used for automatic generation of musical exercises, utilizing a variety of constraints.
-\vspace{5pt}
 
 An important property of our library that we wish to show through our examples, is that it is not geared specifically towards single-voice melodies, but can be used as easily to generate rhythm, harmony or anything combining these three principal elements of music.
 If time permits, we will also implement a simple web interface, which runs our library on the back-end and allows the user to select a number of pre-defined constraints in order to generate, for instance, musical exercises.
