@@ -1,0 +1,36 @@
+name: music
+version: 0.1.0.0
+cabal-version: >=1.10
+build-type: Simple
+
+library
+    exposed-modules:
+        Music,
+        MIDI,
+        Score
+    build-depends:
+        base >=4.7 && <5,
+        midi == 0.2.*,
+        lilypond == 1.9.*,
+        data-default == 0.7.*
+    default-language: Haskell2010
+    hs-source-dirs: src
+
+executable music-exe
+    main-is: Main.hs
+    build-depends:
+        base >=4.7 && <5,
+        music
+    default-language: Haskell2010
+    hs-source-dirs: app
+    ghc-options: -threaded -rtsopts -with-rtsopts=-N
+
+test-suite music-test
+    type: exitcode-stdio-1.0
+    main-is: Spec.hs
+    build-depends:
+        base >=4.7 && <5,
+        music
+    default-language: Haskell2010
+    hs-source-dirs: test
+    ghc-options: -threaded -rtsopts -with-rtsopts=-N
