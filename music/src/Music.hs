@@ -56,6 +56,14 @@ type MusicCore = Music FullPitch
 class ToMusicCore a where
   toMusicCore :: Music a -> MusicCore
 
+class Transposable a where
+  transpose :: Int -> Music a -> Music a
+
+-- | 'FullPitch' is defined as the core music type,
+--   so this instance doesn't change anything.
+instance ToMusicCore FullPitch where
+  toMusicCore = id
+
 -- | Default instances.
 instance Default Pitch where
   def = def :@: def
@@ -72,10 +80,11 @@ instance ToMusicCore Duration where
   toMusicCore = toMusicCore . fmap (const (def :: Pitch))
 
 type Harmony = Music [Pitch]
+
 instance ToMusicCore [Pitch] where
   toMusicCore (m :+: m')  = toMusicCore m :+: toMusicCore m'
   toMusicCore (m :=: m')  = toMusicCore m :=: toMusicCore m'
-  toMusicCore (Note d ps) = toMusicCore $ foldl1 (:=:) $ map (Note d) ps
+  toMusicCore (Note d ps) = toMusicCore $ foldl1 (:+:) $ map (Note d) ps
   toMusicCore (Rest d)    = Rest d
 
 -- | TODO Smart constructors.
