@@ -35,6 +35,14 @@ extra-deps: [
 , random-1.1
 , tf-random-0.5
 , primitive-0.6.3.0
+, Euterpea-2.0.4
+, HCodecs-0.5
+, PortMidi-0.1.5.2
+, arrows-0.4.4.1
+, heap-1.0.3
+, stm-2.4.5.0
+, Stream-0.4.7.2
+, lazysmallcheck-0.6
 ]
 
 allow-newer: true

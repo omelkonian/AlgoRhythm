@@ -27,7 +27,7 @@ data PitchClass  =  Cff | Cf | C | Dff | Cs | Df | Css | D | Eff | Ds
                  |  Ef | Fff | Dss | E | Ff | Es | F | Gff | Ess | Fs
                  |  Gf | Fss | G | Aff | Gs | Af | Gss | A | Bff | As
                  |  Bf | Ass | B | Bs | Bss
-                 deriving (Eq, Show, Generic)
+                 deriving (Eq, Show, Generic, Enum)
 
 type Octave = Int
 

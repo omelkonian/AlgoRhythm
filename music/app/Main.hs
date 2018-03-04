@@ -3,21 +3,23 @@
 module Main where
 
 import           Data.Ratio ((%))
-import           MIDI       (writeToMidiFile)
+import           MIDI       (writeToMidiFile, playThroughMidiDevice)
 import           Music
 import           Score      (writeToLilypondFile)
 
 main :: IO ()
 main = do
   print piece
-  -- writeToMidiFile "out.midi" piece
+  writeToMidiFile "out.midi" piece
+  playThroughMidiDevice piece
   writeToLilypondFile "piece.ly" piece
   writeToLilypondFile "scales.ly" (cIonian :+: (repeatMusic 8 eBlues))
   where
-    piece = foldl1 (:+:) [ Note dur (pc:@:oct)
+    piece = foldl1 (:+:) [ Note dur ((pc:@:oct), [Dynamics dyn])
                          | pc  <- [C, Fs, C, F]
                          | oct <- [4, 4, 3, 3]
                          | dur <- [1%4, 1%8, 1%8, 1%2]
+                         | dyn <- [PPP,FFF,PPP,FFF]
                          ]
 
 -- | Create a scale
