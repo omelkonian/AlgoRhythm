@@ -1,4 +1,4 @@
-module MIDI (writeToMidiFile, playThroughMidiDevice) where
+module MIDI (writeToMidiFile, play, playDev) where
 
 import Control.Arrow ((>>>))
 import qualified Euterpea as E
@@ -9,10 +9,14 @@ import Music
 writeToMidiFile :: (ToMusicCore a) => FilePath -> Music a -> IO ()
 writeToMidiFile path = toMusicCore >>> musicToMidi >>> E.exportMidiFile path
 
--- | Plays `Music` to the standard MIDI output device (using Euterpea under the
+-- | Plays `Music` to the given MIDI output device (using Euterpea under the
 --   hood).
-playThroughMidiDevice :: (ToMusicCore a) => Music a -> IO ()
-playThroughMidiDevice = toMusicCore >>> musicToE >>> E.play
+playDev :: (ToMusicCore a) => Int -> Music a -> IO ()
+playDev i = toMusicCore >>> musicToE >>> E.playDev i
+
+-- | Plays `Music` to the standard MIDI output device.
+play :: (ToMusicCore a) => Music a -> IO ()
+play = toMusicCore >>> musicToE >>> E.play
 
 -- | Converts `MusicCore` to `Codec.Midi.Midi`. Note that this is done using
 --   Euterpea's toMidi function, which does not return a Euterpea defined
@@ -33,11 +37,10 @@ fullPitchToE (p, attrs) = (pitchToE p, pitchAttrsToE attrs)
 
 -- | Converts `Pitch` to a Euterpea Pitch
 pitchToE :: Pitch -> E.Pitch
-pitchToE (pClass :@: oct) = (toEnum (fromEnum pClass), oct)
+pitchToE (pClass, oct) = (toEnum (fromEnum pClass), fromEnum oct)
 
 pitchAttrsToE :: [PitchAttribute] -> [E.NoteAttribute]
-pitchAttrsToE [] = []
-pitchAttrsToE (a:as) = (pitchAttrToE a) : pitchAttrsToE as
+pitchAttrsToE = map pitchAttrToE
 
 pitchAttrToE :: PitchAttribute -> E.NoteAttribute
 pitchAttrToE (Dynamics d)     = dynamicsToE     d

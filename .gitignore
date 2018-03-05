@@ -32,3 +32,6 @@ cabal.project.local
 **.snm
 **.toc
 **/_minted*/
+# Output
+*.midi
+*.ly

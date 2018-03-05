@@ -30,8 +30,8 @@ musicToLilypond (Rest d  ) = Ly.Rest (Just $ toDuration d) []
 -- | Convert a 'FullPitch' to it's corresponding
 --   'Data.Music.Lilypond.Pitch'
 toLilypondPitch :: FullPitch -> Ly.Pitch
-toLilypondPitch (p :@: oc, _) =
-  Ly.Pitch { Ly.getPitch = (toName p, getAccidental p, oc + 1) }
+toLilypondPitch ((p, oc), _) =
+  Ly.Pitch { Ly.getPitch = (toName p, getAccidental p, fromEnum $ succ oc) }
 
 -- | Convert a 'Rational' to it's corresponding
 --   'Data.Music.Lilypond.Duration'
@@ -104,4 +104,4 @@ toLilyPondDynamics d = fromJust $ lookup d m
 
 -- | Find a match in a structure which maps list of keys to elements
 findMatch :: Eq a => a -> [([a], b)] -> b
-findMatch el = (snd . head . filter (elem el. fst))
+findMatch el = snd . head . filter (elem el. fst)
