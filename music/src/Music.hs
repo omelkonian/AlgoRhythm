@@ -1,16 +1,43 @@
-{-# LANGUAGE DeriveGeneric       #-}
-{-# LANGUAGE FlexibleInstances   #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-module Music where
+{-# LANGUAGE DeriveGeneric        #-}
+{-# LANGUAGE FlexibleInstances    #-}
+{-# LANGUAGE ScopedTypeVariables  #-}
+{-# LANGUAGE UndecidableInstances #-}
+-- {-# LANGUAGE OverlappingInstances #-}
+module Music ( -- Datatypes
+               Music (..)
+             , Duration
+             , FullPitch
+             , Pitch
+             , PitchClass (..)
+             , Octave (..)
+             , PitchAttribute (..)
+             , Dynamic (..)
+             , Interval (..)
+             , Articulation (..)
+             , MusicCore, AbsPitch
+             , Melody, Rhythm, Harmony
+               -- Classes
+             , ToMusicCore (..)
+             , BoundEnum (..)
+             , Transposable (..)
+               -- Operators
+             , (%)
+             , line
+             , chord
+             , (<|)
+             , (~>), (<~)
+             , (<@)
+             , (<:)
+             ) where
 
 import           Control.Arrow (first)
 import           Data.Default
 import           Data.Maybe    (fromJust)
 import           GHC.Generics  (Generic)
-import           GHC.Real      (Ratio (..))
+import           GHC.Real      (Ratio (..), (%))
 
-import           Debug.Trace
 
+-------------------------------- BASE TYPES ------------------------------------
 data Music a = Music a :+: Music a
              | Music a :=: Music a
              | Note Duration a
@@ -27,27 +54,24 @@ type FullPitch = (Pitch, [PitchAttribute])
 
 type Pitch = (PitchClass, Octave)
 
-data PitchClass  =  Cff | Cf | C | Dff | Cs | Df | Css | D | Eff | Ds
-                 |  Ef | Fff | Dss | E | Ff | Es | F | Gff | Ess | Fs
-                 |  Gf | Fss | G | Aff | Gs | Af | Gss | A | Bff | As
-                 |  Bf | Ass | B | Bs | Bss
-                 deriving (Eq, Show, Generic, Enum)
+data PitchClass = C | Cs | D | Ds | E | F | Fs | G | Gs | A | As | B
+                  deriving (Eq, Show, Generic, Enum, Bounded, Ord)
 
 data Octave = Oct0 | Oct1 | Oct2 | Oct3 | Oct4 | Oct5 | Oct6
-              deriving (Eq, Show, Generic, Enum, Bounded)
+              deriving (Eq, Show, Generic, Enum, Bounded, Ord)
 
-data PitchAttribute = Dynamics Dynamics
+data PitchAttribute = Dynamic Dynamic
                     | Articulation Articulation
                     deriving (Eq, Show, Generic)
                     -- TODO GroupedArticulation (e.g. slur, legato)
 
-data Dynamics = PPPPP | PPPP | PPP | PP | P | MP | MF | F_ | FF | FFF | FFFF
-                deriving (Eq, Show, Generic, Enum, Bounded)
+data Dynamic = PPPPP | PPPP | PPP | PP | P | MP | MF | F_ | FF | FFF | FFFF
+               deriving (Eq, Show, Generic, Enum, Bounded, Ord)
 
 data Articulation = Staccato | Staccatissimo | Marcato | Tenuto
                     deriving (Eq, Show, Generic)
 
--- | Music instances.
+-------------------------------- INSTANCES -------------------------------------
 instance Functor Music where
   fmap f (m :+: m') = (f <$> m) :+: (f <$> m')
   fmap f (m :=: m') = f <$> m :=: f <$> m'
@@ -83,26 +107,49 @@ instance ToMusicCore Chord where
   toMusicCore (Note d ps) = toMusicCore $ foldl1 (:=:) $ map (Note d) ps
   toMusicCore (Rest d)    = Rest d
 
--- | Transposable instances.
+-- | 'Transposable' instances.
+class (Enum a, Bounded a) => BoundEnum a where
+  -- | Safely convert from 'Int', respecting bounds.
+  safeToEnum :: Int -> a
+  safeToEnum = toEnum . min top . max bottom
+    where top = fromEnum (maxBound :: a)
+          bottom = fromEnum (minBound :: a)
+
+  -- | Get next value or min/max if out-of-bounds.
+  next ::  a -> a
+  next = safeToEnum . (+1) . fromEnum
+
+  -- | Get previous value or min/max if out-of-bounds.
+  prev :: a -> a
+  prev = safeToEnum . subtract 1 . fromEnum
+
+  moveN :: Int -> a -> a
+  moveN n a | n < 0     = iterate prev a !! abs n
+            | otherwise = iterate next a !! n
+
+instance (Enum a, Bounded a) => BoundEnum a where
+
 class Transposable a where
-  transpose :: Int -> Music a -> Music a
+  transpose :: Interval -> Music a -> Music a
+  transposeDown :: Interval -> Music a -> Music a
 
-instance Transposable Pitch where
-  transpose n m = transposePitch n <$> m
+instance BoundEnum a => Transposable a where
+  transpose i m = (safeToEnum . (+ fromEnum i) . fromEnum) <$> m
+  transposeDown i m = (safeToEnum . subtract (fromEnum i) . fromEnum) <$> m
 
-instance Transposable FullPitch where
-  transpose n fp = first (transposePitch n) <$> fp
+instance {-# OVERLAPS #-} Transposable FullPitch where
+  transpose i m = first (moveN $ fromEnum i) <$> m
+  transposeDown i m = first (moveN $ -(fromEnum i)) <$> m
 
-instance Transposable Chord where
-  transpose n (m :+: m')  = transpose n m :+: transpose n m'
-  transpose n (m :=: m')  = transpose n m :=: transpose n m'
-  transpose n (Note d ps) = Note d (transposePitch n <$> ps)
-  transpose n (Rest d)    = Rest d
+instance {-# OVERLAPS #-} (BoundEnum a) => Num a where
+  i + i' = safeToEnum $ fromEnum i + fromEnum i'
+  i - i' = safeToEnum $ fromEnum i - fromEnum i'
+  i * i' = safeToEnum $ fromEnum i * fromEnum i'
+  abs = toEnum . abs . fromEnum
+  signum = toEnum . signum . fromEnum
+  fromInteger = toEnum . fromInteger
 
-transposePitch :: Int -> Pitch -> Pitch
-transposePitch n p = iterate succ p !! n
-
--- | Default instances.
+-- | 'Default' instances.
 instance Default PitchClass where
   def = C
 instance Default Octave where
@@ -112,42 +159,45 @@ instance Default Octave where
 type AbsPitch = Int
 
 instance Enum Pitch where
-  toEnum n = (pc, toEnum $ bound (oct - 1))
+  toEnum n = (pc, toEnum $ bound oct)
     where (oct, i) = n `divMod` 12
           pc = [C, Cs, D, Ds, E, F, Fs, G, Gs, A, As, B] !! i
           bound = min (fromEnum (maxBound :: Octave)) .
                   max (fromEnum (minBound :: Octave))
 
-  fromEnum (pc, oct) = 12 * (fromEnum oct + 1) + fromJust (lookup pc pcInts)
-    where pcInts = [ (Cff, -2), (Cf, -1), (C, 0), (Cs, 1), (Css, 2), (Dff, 0)
-                   , (Df, 1), (D, 2), (Ds, 3), (Dss, 4), (Eff, 2), (Ef, 3)
-                   , (E, 4), (Es, 5), (Ess, 6), (Gff, 5), (Gf, 6), (G, 7)
-                   , (Gs, 8), (Gss, 9), (Fff, 3), (Ff, 4), (F, 5), (Fs, 6)
-                   , (Fss, 7), (Aff, 7), (Af, 8), (A, 9), (As, 10), (Ass, 11)
-                   , (Bff, 9), (Bf, 10), (B, 11), (Bs, 12), (Bss, 13)
-                   ]
+  fromEnum (pc, oct) = 12 * fromEnum oct + fromEnum pc
 
--- | TODO Smart constructors.
+-- | Intervals.
+data Interval = P1 | Min2 | M2 | Min3 | M3 | P4 | D5
+              | P5 | Min6 | M6 | Min7 | M7 | P8
+              | Min9 | M9 | Min10 | M10 | P11 | A11
+              | P12 | Min13 | M13 | Min14 | M14 | P15
+              deriving (Eq, Show, Generic, Enum, Bounded)
+
+-- | TODO Operators / smart constructors.
 line, chord :: [Music a] -> Music a
 line = foldr1 (:+:)
 chord = foldr1 (:=:)
 
-(<|) :: a -> Duration -> Music a
-(<|) = flip Note
-
-(~|) :: Transposable a => Music a -> Interval -> Music a
-m ~| n = transpose (fromEnum n) m
-
--- infix 4 <@
+infix 5 <@
 (<@) :: PitchClass -> Int -> Pitch
 pc <@ n = (pc, toEnum n)
 
--- | TODO Operations
+infix 4 <:
+(<:) :: Pitch -> [PitchAttribute] -> FullPitch
+p <: attrs = (p, attrs)
 
--- | TODO Intervals
-data Interval = P1 | Min2 | M2 | Min3 | M3 | P4 | D5
-              | P5 | Min6 | M6 | Min7 | M7 | P8
-              deriving (Eq, Show, Generic, Enum)
+infix 3 <|
+(<|) :: a -> Duration -> Music a
+(<|) = flip Note
+
+infix 2 ~>
+(~>) :: Transposable a => Music a -> Interval -> Music a
+m ~> n = transpose n m
+
+infix 1 <~
+(<~) :: Transposable a => Music a -> Interval -> Music a
+m <~ n = transposeDown n m
 
 -- | TODO Degrees
 

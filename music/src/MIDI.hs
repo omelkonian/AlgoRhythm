@@ -39,22 +39,38 @@ noteToE (Note dur (p, attrs)) = do
   -- Initially create a note with pitch and duration, but no extra attributes.
   let noteE = E.note dur (pitchToE p, [])
   -- Add the attributes one by one.
-  foldr (flip addAttrToE) noteE (attrs)
+  foldr (flip addAttrToE) noteE attrs
 
--- | Converts `Pitch` to a Euterpea Pitch
+-- | Converts `Pitch` to a Euterpea Pitch.
 pitchToE :: Pitch -> E.Pitch
-pitchToE (pClass, oct) = (toEnum $ fromEnum pClass, fromEnum oct)
+pitchToE (pc, oct) = (pitchClassToE pc, fromEnum oct)
+
+-- | Converts `PitchClass` to a Euterpea PitchClass.
+pitchClassToE :: PitchClass -> E.PitchClass
+pitchClassToE p = case p of
+  C  -> E.C
+  Cs -> E.Cs
+  D  -> E.Ds
+  Ds -> E.Ds
+  E  -> E.E
+  F  -> E.F
+  Fs -> E.Fs
+  G  -> E.G
+  Gs -> E.Gs
+  A  -> E.A
+  As -> E.As
+  B  -> E.B
 
 addAttrToE :: E.Music1 -> PitchAttribute -> E.Music1
 addAttrToE n a = E.Modify (E.Phrase [attrToE a]) n
 
 -- | Converts a PitchAttribute to its Euterpea representation.
 attrToE :: PitchAttribute -> E.PhraseAttribute
-attrToE (Dynamics d)     = E.Dyn $ dynamicsToE d
+attrToE (Dynamic d)      = E.Dyn $ dynamicsToE d
 attrToE (Articulation a) = E.Art $ articulationToE a
 
 -- | Converts Dynamics to Euterpea Dynamic.
-dynamicsToE :: Dynamics -> E.Dynamic
+dynamicsToE :: Dynamic -> E.Dynamic
 dynamicsToE d = E.StdLoudness dE
   where -- There are 11 Dynamics in the Music DSL and only 9 in the Euterpea
         -- DSL. Hence the code below. The magic 8 represents the maximum

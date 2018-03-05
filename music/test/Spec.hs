@@ -1,7 +1,11 @@
-import Test.Framework (defaultMain, testGroup)
-import Test.Framework.Providers.HUnit
+import           Test.Framework                 (defaultMain, testGroup)
+import           Test.Framework.Providers.HUnit
 
-import TMusic
-import TScore
+import           TMidi                          (midiTests)
+import           TMusic                         (musicTests)
+import           TScore                         (scoreTests)
 
-main = defaultMain [ musicTests, scoreTests ]
+main = defaultMain [ musicTests
+                   , scoreTests
+                   , midiTests
+                   ]

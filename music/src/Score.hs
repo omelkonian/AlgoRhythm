@@ -1,13 +1,13 @@
 module Score (writeToLilypondFile) where
 
-import Control.Arrow ((>>>))
-import qualified Data.Music.Lilypond as Ly
+import           Control.Arrow                ((>>>))
+import           Data.Maybe
+import qualified Data.Music.Lilypond          as Ly
 import qualified Data.Music.Lilypond.Dynamics as LyD
-import Data.Music.Lilypond.IO (writeMusic)
-import Music
-import Data.Maybe
-import Text.Pretty
-import System.IO
+import           Data.Music.Lilypond.IO       (writeMusic)
+import           Music
+import           System.IO
+import           Text.Pretty
 
 
 -- | Write 'Music' to Lilypond file.
@@ -48,32 +48,27 @@ getPostModifiers (_, xs) = map attrToPost xs
 toName :: PitchClass -> Ly.PitchName
 toName pc = findMatch pc nameMap
   where nameMap =
-          [
-            ([Cff, Cf, C, Cs, Css], Ly.C),
-            ([Dff, Df, D, Ds, Dss], Ly.D),
-            ([Eff, Ef, E, Es, Ess], Ly.E),
-            ([Fff, Ff, F, Fs, Fss], Ly.F),
-            ([Gff, Gf, G, Gs, Gss], Ly.G),
-            ([Aff, Af, A, As, Ass], Ly.A),
-            ([Bff, Bf, B, Bs, Bss], Ly.B)
+          [ ([C, Cs], Ly.C)
+          , ([D, Ds], Ly.D)
+          , ([E], Ly.E)
+          , ([F, Fs], Ly.F)
+          , ([G, Gs], Ly.G)
+          , ([A, As], Ly.A)
+          , ([B], Ly.B)
           ]
 
 -- | Get the 'Data.Music.Lilypond.Accidental' for a 'PitchClass'
 getAccidental :: PitchClass -> Ly.Accidental
 getAccidental pc = findMatch pc accMap
   where accMap =
-          [
-            ([Cff, Dff, Eff, Fff, Gff, Aff, Bff], -2),
-            ([Cf, Df, Ef, Ff, Gf, Af, Bf], -1),
-            ([C, D, E, F, G, A, B], 0),
-            ([Cs, Ds, Es, Fs, Gs, As, Bs], 1),
-            ([Css, Dss, Ess, Fss, Gss, Ass, Bss], 2)
+          [ ([C, D, E, F, G, A, B], 0)
+          , ([Cs, Ds, Fs, Gs, As], 1)
           ]
 
 -- | Convert a 'PitchAttribute' to it's corresponding
 --   'Data.Music.Lilypond.PostEvent'
 attrToPost :: PitchAttribute -> Ly.PostEvent
-attrToPost (Dynamics     d) = Ly.Dynamics Ly.Default (toLilyPondDynamics d)
+attrToPost (Dynamic d)      = Ly.Dynamics Ly.Default (toLilyPondDynamics d)
 attrToPost (Articulation a) = Ly.Articulation Ly.Default (toLilyPondArticulation a)
 
 toLilyPondArticulation :: Articulation -> Ly.Articulation
@@ -85,7 +80,7 @@ toLilyPondArticulation a = fromJust $ lookup a m
               (Tenuto, Ly.Tenuto)
             ]
 
-toLilyPondDynamics :: Dynamics -> LyD.Dynamics
+toLilyPondDynamics :: Dynamic -> LyD.Dynamics
 toLilyPondDynamics d = fromJust $ lookup d m
   where m = [
               (PPPPP, LyD.PPPPP),
