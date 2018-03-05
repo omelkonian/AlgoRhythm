@@ -35,3 +35,5 @@ cabal.project.local
 # Output
 *.midi
 *.ly
+*.ps
+*.pdf
