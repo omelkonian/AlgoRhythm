@@ -81,7 +81,6 @@ toLilyPondArticulation a = fromJust $ lookup a m
   where m = [
               (Staccato, Ly.Staccato),
               (Staccatissimo, Ly.Staccatissimo),
-              (Martellato, undefined),
               (Marcato, Ly.Marcato),
               (Tenuto, Ly.Tenuto)
             ]

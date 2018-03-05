@@ -1,6 +1,8 @@
 module MIDI (writeToMidiFile, play, playDev) where
 
 import Control.Arrow ((>>>))
+import Data.Maybe (fromJust)
+import Data.Ratio ((%))
 import qualified Euterpea as E
 import Codec.Midi
 import Music
@@ -26,28 +28,51 @@ musicToMidi m = E.toMidi (E.perform (musicToE m))
 
 -- | Converts `MusicCore` to Euterpea Music1
 musicToE :: MusicCore -> E.Music1
-musicToE (m :+: m')           = (E.:+:) (musicToE m) (musicToE m')
-musicToE (m :=: m')           = (E.:=:) (musicToE m) (musicToE m')
-musicToE (Rest dur)           = E.rest dur
-musicToE (Note dur fullPitch) = E.note dur (fullPitchToE fullPitch)
+musicToE   (m :+: m') = (E.:+:) (musicToE m) (musicToE m')
+musicToE   (m :=: m') = (E.:=:) (musicToE m) (musicToE m')
+musicToE   (Rest dur) = E.rest dur
+musicToE n@(Note _ _) = noteToE n
 
--- | Converts `FullPitch` to a Euterpea Note1
-fullPitchToE :: FullPitch -> E.Note1
-fullPitchToE (p, attrs) = (pitchToE p, pitchAttrsToE attrs)
+-- | Converts MusicCore Note to a Euterpea Music1 Note.
+noteToE :: MusicCore -> E.Music1
+noteToE (Note dur (p, attrs)) = do
+  -- Initially create a note with pitch and duration, but no extra attributes.
+  let noteE = E.note dur (pitchToE p, [])
+  -- Add the attributes one by one.
+  foldr (flip addAttrToE) noteE (attrs)
 
 -- | Converts `Pitch` to a Euterpea Pitch
 pitchToE :: Pitch -> E.Pitch
-pitchToE (pClass, oct) = (toEnum (fromEnum pClass), fromEnum oct)
+pitchToE (pClass, oct) = (toEnum $ fromEnum pClass, fromEnum oct)
 
-pitchAttrsToE :: [PitchAttribute] -> [E.NoteAttribute]
-pitchAttrsToE = map pitchAttrToE
+addAttrToE :: E.Music1 -> PitchAttribute -> E.Music1
+addAttrToE n a = E.Modify (E.Phrase [attrToE a]) n
 
-pitchAttrToE :: PitchAttribute -> E.NoteAttribute
-pitchAttrToE (Dynamics d)     = dynamicsToE     d
-pitchAttrToE (Articulation a) = articulationToE a
+-- | Converts a PitchAttribute to its Euterpea representation.
+attrToE :: PitchAttribute -> E.PhraseAttribute
+attrToE (Dynamics d)     = E.Dyn $ dynamicsToE d
+attrToE (Articulation a) = E.Art $ articulationToE a
 
-dynamicsToE :: Dynamics -> E.NoteAttribute
-dynamicsToE = E.Dynamics . show
+-- | Converts Dynamics to Euterpea Dynamic.
+dynamicsToE :: Dynamics -> E.Dynamic
+dynamicsToE d = E.StdLoudness $ fromJust $ lookup d m
+  where m = [
+              (PPPPP, E.PPP),
+              (PPPP, E.PPP),
+              (PPP, E.PP),
+              (PP, E.P),
+              (P, E.MP),
+              (MP, E.SF),
+              (MF, E.MF),
+              (F_, E.NF),
+              (FF, E.FF),
+              (FFF, E.FFF),
+              (FFFF, E.FFF)
+            ]
 
-articulationToE :: Articulation -> E.NoteAttribute
-articulationToE a = undefined
+-- | Converts Articulation to Euterpea Articulation.
+articulationToE :: Articulation -> E.Articulation
+articulationToE Staccato      = E.Staccato (1%4)
+articulationToE Staccatissimo = E.Staccato (1%8)
+articulationToE Marcato       = E.Marcato
+articulationToE Tenuto        = E.Tenuto

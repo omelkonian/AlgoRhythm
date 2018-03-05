@@ -44,7 +44,7 @@ data PitchAttribute = Dynamics Dynamics
 data Dynamics = PPPPP | PPPP | PPP | PP | P | MP | MF | F_ | FF | FFF | FFFF
                 deriving (Eq, Show, Generic)
 
-data Articulation = Staccato | Staccatissimo | Martellato | Marcato | Tenuto
+data Articulation = Staccato | Staccatissimo | Marcato | Tenuto
                     deriving (Eq, Show, Generic)
 
 -- | Music instances.

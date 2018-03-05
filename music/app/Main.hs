@@ -16,11 +16,12 @@ main = do
   writeToLilypondFile "scales.ly" (cIonian :+: repeatMusic 8 eBlues)
   where
     piece' = line $ map ($ piece) [id, (~| P4), id, (~| P5), (~| P4), id]
-    piece = line [ Note dur (pc <@ oct, [Dynamics dyn])
-                 | pc  <- [C, Fs, C, F]
+    piece = line [ Note dur (pc <@ oct, [Dynamics dyn, Articulation art])
+                 | pc  <- [Cf, Fs, D, Ff]
                  | oct <- [4, 4, 3, 3]
                  | dur <- [1%4, 1%8, 1%8, 1%2]
                  | dyn <- [PPP,FFF,PPP,FFF]
+                 | art <- [Staccatissimo,Tenuto,Marcato,Staccato]
                  ]
 
 -- | Create a scale
