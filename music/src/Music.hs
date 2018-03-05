@@ -42,7 +42,7 @@ data PitchAttribute = Dynamics Dynamics
                     -- TODO GroupedArticulation (e.g. slur, legato)
 
 data Dynamics = PPPPP | PPPP | PPP | PP | P | MP | MF | F_ | FF | FFF | FFFF
-                deriving (Eq, Show, Generic)
+                deriving (Eq, Show, Generic, Enum, Bounded)
 
 data Articulation = Staccato | Staccatissimo | Marcato | Tenuto
                     deriving (Eq, Show, Generic)

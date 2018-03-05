@@ -55,20 +55,13 @@ attrToE (Articulation a) = E.Art $ articulationToE a
 
 -- | Converts Dynamics to Euterpea Dynamic.
 dynamicsToE :: Dynamics -> E.Dynamic
-dynamicsToE d = E.StdLoudness $ fromJust $ lookup d m
-  where m = [
-              (PPPPP, E.PPP),
-              (PPPP, E.PPP),
-              (PPP, E.PP),
-              (PP, E.P),
-              (P, E.MP),
-              (MP, E.SF),
-              (MF, E.MF),
-              (F_, E.NF),
-              (FF, E.FF),
-              (FFF, E.FFF),
-              (FFFF, E.FFF)
-            ]
+dynamicsToE d = E.StdLoudness dE
+  where -- There are 11 Dynamics in the Music DSL and only 9 in the Euterpea
+        -- DSL. Hence the code below. The magic 8 represents the maximum
+        -- fromEnum value one can get from an E.Dynamic value. However, Euterpea
+        -- has not derived Bounded for E.Dynamic, so maxBound::E.Dynamic
+        -- couldn't be used here.
+        dE = toEnum (min 8 (max 0 (fromEnum d) - 1))
 
 -- | Converts Articulation to Euterpea Articulation.
 articulationToE :: Articulation -> E.Articulation
