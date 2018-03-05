@@ -1,10 +1,9 @@
 {-# LANGUAGE ParallelListComp #-}
-{-# LANGUAGE TupleSections    #-}
 module Main where
 
-import           MIDI       (play, playDev, writeToMidiFile)
+import           MIDI  (play, playDev, writeToMidiFile)
 import           Music
-import           Score      (writeToLilypondFile)
+import           Score (writeToLilypondFile)
 
 main :: IO ()
 main = do
@@ -12,36 +11,17 @@ main = do
   writeToMidiFile "out.midi" piece'
   playDev 4 piece'
   writeToLilypondFile "piece.ly" piece'
-  writeToLilypondFile "scales.ly" (cIonian :+: repeatMusic 8 eBlues)
+  writeToLilypondFile "scales.ly" (cIonian :+: Rest 1 :+: 8 ## eBlues)
   where
+    cIonian, eBlues :: Melody
+    cIonian = line $ C#4+|ionian <|| 1%8
+    eBlues  = line $ E#4+|blues  <|| 1%16
+    piece, piece' :: Music FullPitch
     piece' = line $ map ($ piece) [id, (~> P4), id, (~> P5), (~> P4), id]
-    piece = line [ Note dur (pc <@ oct, [Dynamic dyn, Articulation art])
+    piece = line [ pc # oct <: [Dynamic dyn, Articulation art] <| dur
                  | pc  <- [B, Fs, D, E]
                  | oct <- [4, 4, 3, 3]
                  | dur <- [1%4, 1%8, 1%8, 1%2]
                  | dyn <- [PPP,FFF,PPP,FFF]
                  | art <- [Staccatissimo,Tenuto,Marcato,Staccato]
                  ]
-
--- | Create a scale
-scale :: Duration -> [(PitchClass, Int)] -> MusicCore
-scale d = foldr1 (:+:) . map (Note d . (,[]) . uncurry (<@))
-
--- | Repeat a piece of music
-repeatMusic :: Int -> Music a -> Music a
-repeatMusic n m | n == 1    = m
-                | otherwise = m :+: repeatMusic (n - 1) m
-
-cIonian :: MusicCore
-cIonian = scale (1 % 4) [(p, 4) | p <- [D, E, F, G, A, B, C]]
-eBlues :: MusicCore
-eBlues = scale (1 % 2)
-  [
-    (E, 4),
-    (G, 4),
-    (A, 4),
-    (As, 4),
-    (B, 4),
-    (D, 5),
-    (E, 5)
-  ]
