@@ -185,7 +185,7 @@ data Interval = P1 | Mi2 | M2 | Mi3 | M3 | P4 | A4
 type ChordRep = (Pitch, ChordType)
 type ChordType = [Interval]
 maj, mi, dim, aug, maj7, min7, dom7, dim7 :: ChordType
--- Tryads
+-- Triads
 maj = [P1, M3, P5]
 mi  = [P1, Mi3, P5]
 dim = [P1, Mi3, A4]

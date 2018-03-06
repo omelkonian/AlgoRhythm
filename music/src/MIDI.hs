@@ -50,7 +50,7 @@ pitchClassToE :: PitchClass -> E.PitchClass
 pitchClassToE p = case p of
   C  -> E.C
   Cs -> E.Cs
-  D  -> E.Ds
+  D  -> E.D
   Ds -> E.Ds
   E  -> E.E
   F  -> E.F
