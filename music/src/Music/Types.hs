@@ -22,10 +22,14 @@ module Music.Types
          -- * Classes
        , ToMusicCore (..)
        , BoundEnum (..)
+         -- * Shorthands
        , (%)
+       , line, chord
+       , absPitch, pitch
        ) where
 
 import           Data.Default
+import           Data.Monoid  ((<>))
 import           GHC.Generics (Generic)
 import           GHC.Real     ((%))
 
@@ -85,7 +89,11 @@ instance Functor Music where
   fmap f (Note d x) = Note d (f x)
   fmap _ (Rest d)   = Rest d
 
--- TODO Foldable, Traversable, etc...
+instance Foldable Music where
+  foldMap f (m :+: m') = foldMap f m <> foldMap f m'
+  foldMap f (m :=: _)  = foldMap f m
+  foldMap f (Note _ a) = f a
+  foldMap _ _          = mempty
 
 -- | Core 'Music' datatype.
 type MusicCore = Music FullPitch
@@ -148,3 +156,13 @@ class (Enum a, Bounded a) => BoundEnum a where
             | otherwise = iterate next a !! n
 
 instance (Enum a, Bounded a) => BoundEnum a where
+
+-- Useful shorthands.
+line, chord :: [Music a] -> Music a
+line = foldr1 (:+:)
+chord = foldr1 (:=:)
+
+absPitch :: Pitch -> AbsPitch
+absPitch = fromEnum
+pitch :: AbsPitch -> Pitch
+pitch = toEnum

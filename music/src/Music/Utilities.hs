@@ -28,11 +28,6 @@ instance {-# OVERLAPS #-} Abstract [Interval] Pitch [Pitch] where
 instance Abstract rep a inst => Abstract rep (Music a) (Music inst) where
   instantiate ma rep = (`instantiate` rep) <$> ma
 
--- Useful shorthands.
-line, chord :: [Music a] -> Music a
-line = foldr1 (:+:)
-chord = foldr1 (:=:)
-
 -- Aliases.
 mode :: Int -> AbstractChord -> AbstractChord
 mode = invertN

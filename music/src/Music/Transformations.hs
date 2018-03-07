@@ -2,26 +2,30 @@
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE InstanceSigs          #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE PostfixOperators      #-}
 {-# LANGUAGE UndecidableInstances  #-}
 module Music.Transformations
-       ( Transposable (..)
-       , (~>), (<~)
+       ( Transposable (..), (~>), (<~)
        , Invertible (..)
+       , Retrogradable (..)
+       , musicToList, listToMusic
+       , normalize
        ) where
 
-import           Control.Arrow (first)
+import Control.Arrow (first)
+import Data.Maybe    (catMaybes)
 
-import           Music.Types
-
-infixl 5 ~>, <~
-(~>), (<~) :: Transposable a => a -> Interval -> a
-m ~> n = trans n m
-m <~ n = snart n m
+import Music.Types
 
 -- | Anything that can be transposed with an 'Interval'.
 class Transposable a where
   trans :: Interval -> a -> a
   snart :: Interval -> a -> a
+
+infixl 5 ~>, <~
+(~>), (<~) :: Transposable a => a -> Interval -> a
+m ~> n = trans n m
+m <~ n = snart n m
 
 instance {-# OVERLAPPABLE #-} BoundEnum a => Transposable a where
   trans i = safeToEnum . (+ fromEnum i) . fromEnum
@@ -50,8 +54,17 @@ class Invertible f a where
   invertN :: Int -> f a -> f a
   invertN n xs = iterate invert xs !! (n - 1)
 
-instance (Functor m, Invertible f a) => Invertible m (f a) where
-  invert = fmap invert
+instance Invertible [] a => Invertible [] (Maybe a) where
+  invert ms = go ms (invert $ catMaybes ms)
+    where go (x:xs) (y:ys) = case x of Just _  -> Just y : go xs ys
+                                       Nothing -> Nothing : go xs ys
+          go _ _ = []
+
+instance Invertible [] a => Invertible [] (a, b) where
+  invert = uncurry zip . first invert . unzip
+
+instance (Show a, Invertible [] a) => Invertible Music a where
+  invert = listToMusic . invert . musicToList
 
 instance Invertible [] Interval where
   invert (P1:xs) =
@@ -60,20 +73,47 @@ instance Invertible [] Interval where
                            | otherwise = 12 - i
   invert _ = error "inverting malformed interval description"
 
+instance Invertible [] AbsPitch where
+  invert = fmap negate
+
+instance {-# OVERLAPS #-} Invertible [] Pitch where
+  invert [] = []
+  invert ps = pitch <$> aps'
+    where aps' = (+ pivot) <$> inverted
+          inverted = invert distances
+          distances = (\ap -> ap - pivot) <$> aps
+          aps = absPitch <$> ps
+          pivot = head aps
+
 -- Anything that can be mirrored.
 class Retrogradable f a where
-  retro :: f a -> f a
-
-instance (Functor m, Retrogradable f a) => Retrogradable m (f a) where
-  retro = fmap retro
+  (><) :: f a -> f a
 
 instance Retrogradable [] a where
-  retro = reverse
+  (><) = reverse
 
 instance Retrogradable Music a where
-  retro (m :+: m') = retro m' :+: retro m
-  retro (m :=: m') = retro m :=: retro m'
-  retro m          = m
-  -- TODO fill with rests
-
+  (><) = normalize . retro
+    where retro (m :+: m')  = (m'><) :+: (m><)
+          retro  (m :=: m') = (m><) :=: (m'><)
+          retro  m          = m
+          
 -- TODO scale durations
+
+-- | Normalize nested application of sequential composition.
+normalize :: Music a -> Music a
+normalize (m :+: m') = listToMusic $ musicToList m ++ musicToList m'
+normalize (m :=: m') = normalize m :=: normalize m'
+normalize m          = m
+
+-- | Conversion to/from 'List'.
+musicToList :: Music a -> [(Maybe a, Duration)]
+musicToList (m :+: m') = musicToList m ++ musicToList m'
+musicToList (m :=: _)  = musicToList m
+musicToList (Note d a) = [(Just a, d)]
+musicToList (Rest d)   = [(Nothing, d)]
+
+listToMusic :: [(Maybe a, Duration)] -> Music a
+listToMusic = line . map (uncurry $ \m d ->
+  case m of Nothing -> Rest d
+            Just a  -> Note d a)

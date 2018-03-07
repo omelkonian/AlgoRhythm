@@ -3,7 +3,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 module Music.Operators
        ( (%), (##)
-       , (#), (<|), (<||)
+       , (#), (<|), (<||), (.-)
        , (=|), (+|)
        , (<:)
        , (~>), (<~)
@@ -22,6 +22,9 @@ infix  6 =|, +|
 infixl 5 <||
 
 -- Constructors.
+(.-) :: Duration -> Music a
+(.-) = Rest
+
 (#) :: PitchClass -> Octave -> Pitch
 pc # n = (pc, n)
 
