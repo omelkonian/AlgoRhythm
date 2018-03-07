@@ -4,9 +4,7 @@ import           Control.Arrow                ((>>>))
 import           Data.Maybe
 import qualified Data.Music.Lilypond          as Ly
 import qualified Data.Music.Lilypond.Dynamics as LyD
-import           Data.Music.Lilypond.IO       (writeMusic)
 import           Music
-import           System.IO
 import           Text.Pretty
 
 

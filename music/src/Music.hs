@@ -1,7 +1,13 @@
 module Music
-       ( module Music.Types
-       , module Music.Constants
+       ( module Music.Constants
+       , module Music.Operators
+       , module Music.Transformations
+       , module Music.Types
+       , module Music.Utilities
        ) where
 
-import Music.Types
-import Music.Constants
+import           Music.Constants
+import           Music.Operators
+import           Music.Transformations
+import           Music.Types
+import           Music.Utilities

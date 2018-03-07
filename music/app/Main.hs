@@ -1,26 +1,28 @@
 {-# LANGUAGE ParallelListComp #-}
+{-# LANGUAGE PostfixOperators #-}
 module Main where
 
-import           Export (play, playDev, writeToLilypondFile, writeToMidiFile)
+import           Export (playDev, writeToLilypondFile, writeToMidiFile)
 import           Music
 
 main :: IO ()
 main = do
-  print piece'
-  writeToMidiFile "out.midi" piece'
+  writeToMidiFile "piece.midi" piece'
+  -- writeToLilypondFile "piece.ly" piece'
+  writeToMidiFile "scales.midi" scalePiece
+  -- writeToLilypondFile "scales.ly" scalePiece
   playDev 4 piece'
-  writeToLilypondFile "piece.ly" piece'
-  writeToLilypondFile "scales.ly" (cIonian :+: Rest 1 :+: 8 ## eBlues)
   where
-    cIonian, eBlues :: Melody
-    cIonian = line $ C#4+|ionian <|| 1%8
-    eBlues  = line $ E#4+|blues  <|| 1%16
+    cIonian, eBlues, scalePiece :: Melody
+    scalePiece = cIonian :+: Rest wn :+: 8 ## eBlues
+    cIonian = line $ (C#4)+|major <||(qn^^^)
+    eBlues  = line $ (E#4)+|blues <||(qn^^^)
     piece, piece' :: Music FullPitch
     piece' = line $ map ($ piece) [id, (~> P4), id, (~> P5), (~> P4), id]
     piece = line [ pc # oct <: [Dynamic dyn, Articulation art] <| dur
                  | pc  <- [B, Fs, D, E]
                  | oct <- [4, 4, 3, 3]
-                 | dur <- [1%4, 1%8, 1%8, 1%2]
+                 | dur <- [(en^^^), (en^^^), (en^^^), (qn^.)]
                  | dyn <- [PPP,FFF,PPP,FFF]
                  | art <- [Staccatissimo,Tenuto,Marcato,Staccato]
                  ]

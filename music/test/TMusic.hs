@@ -9,15 +9,13 @@ import           Test.HUnit
 import           Test.QuickCheck ((==>))
 
 import           Music
-import           GenSetup
-
-import Debug.Trace
+import           GenSetup()
 
 musicTests = testGroup "Music" [transpTests]
 
 transpTests = testGroup "Tranpose"
   [ testCase "one note" $
-      C#4 <| 5%4 ~> M3 @?= E#4<|5%4
+      C#4 <|hn ~> M3 @?= E#4<|hn
   , testCase "one chord" $
       let a  = chord $ C#4=|maj <|| 1
           a' = chord $ C#5=|maj <|| 1

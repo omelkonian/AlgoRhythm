@@ -1,13 +1,15 @@
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 {-# LANGUAGE DeriveAnyClass      #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving  #-}
 {-# LANGUAGE TemplateHaskell     #-}
-module GenSetup ( genMelody
-             , genNote
-             , genPitch
-             , genDur
-             , generate
-             ) where
+module GenSetup
+       ( genMelody
+       , genNote
+       , genPitch
+       , genDur
+       , generate
+       ) where
 
 import           Data.DeriveTH
 import           Test.QuickCheck.Arbitrary

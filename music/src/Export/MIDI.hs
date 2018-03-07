@@ -1,7 +1,6 @@
 module Export.MIDI (writeToMidiFile, play, playDev) where
 
 import Control.Arrow ((>>>))
-import Data.Maybe (fromJust)
 import Data.Ratio ((%))
 import qualified Euterpea as E
 import Codec.Midi
@@ -14,7 +13,7 @@ writeToMidiFile path = toMusicCore >>> musicToMidi >>> E.exportMidiFile path
 -- | Plays `Music` to the given MIDI output device (using Euterpea under the
 --   hood).
 playDev :: (ToMusicCore a) => Int -> Music a -> IO ()
-playDev i = toMusicCore >>> musicToE >>> E.playDev i
+playDev devId = toMusicCore >>> musicToE >>> E.playDev devId
 
 -- | Plays `Music` to the standard MIDI output device.
 play :: (ToMusicCore a) => Music a -> IO ()
@@ -28,14 +27,14 @@ musicToMidi m = E.toMidi (E.perform (musicToE m))
 
 -- | Converts `MusicCore` to Euterpea Music1
 musicToE :: MusicCore -> E.Music1
-musicToE   (m :+: m') = (E.:+:) (musicToE m) (musicToE m')
-musicToE   (m :=: m') = (E.:=:) (musicToE m) (musicToE m')
-musicToE   (Rest dur) = E.rest dur
-musicToE n@(Note _ _) = noteToE n
+musicToE (m :+: m') = (E.:+:) (musicToE m) (musicToE m')
+musicToE (m :=: m') = (E.:=:) (musicToE m) (musicToE m')
+musicToE (Rest dur) = E.rest dur
+musicToE (Note dur (p, attrs)) = noteToE dur (p, attrs)
 
 -- | Converts MusicCore Note to a Euterpea Music1 Note.
-noteToE :: MusicCore -> E.Music1
-noteToE (Note dur (p, attrs)) = do
+noteToE :: Duration -> FullPitch -> E.Music1
+noteToE dur (p, attrs) = do
   -- Initially create a note with pitch and duration, but no extra attributes.
   let noteE = E.note dur (pitchToE p, [])
   -- Add the attributes one by one.
