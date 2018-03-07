@@ -1,9 +1,8 @@
 {-# LANGUAGE ParallelListComp #-}
 module Main where
 
-import           MIDI  (play, playDev, writeToMidiFile)
+import           Export (play, playDev, writeToLilypondFile, writeToMidiFile)
 import           Music
-import           Score (writeToLilypondFile)
 
 main :: IO ()
 main = do

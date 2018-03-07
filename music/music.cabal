@@ -6,8 +6,11 @@ build-type: Simple
 library
     exposed-modules:
         Music,
-        MIDI,
-        Score
+        Music.Types,
+        Music.Constants,
+        Export,
+        Export.MIDI,
+        Export.Score
     build-depends:
         base >=4.7 && <5,
         midi == 0.2.*,

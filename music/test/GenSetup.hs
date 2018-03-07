@@ -28,11 +28,8 @@ genMelody = line <$> listOf1 genNote
 genNote :: Gen Melody
 genNote = (<|) <$> genPitch <*> genDur
 
+genPitch :: Gen Pitch
+genPitch = (,) <$> arbitrary <*> arbitrary
+
 genDur :: Gen Duration
 genDur = elements [1%16,1%8,1%4,1%2]
-
-genOctave :: Gen Octave
-genOctave = elements [Oct3,Oct4,Oct5]
-
-genPitch :: Gen Pitch
-genPitch = (,) <$> arbitrary <*> genOctave

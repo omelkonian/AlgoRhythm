@@ -7,9 +7,9 @@ import           Test.Framework                 (testGroup)
 import           Test.Framework.Providers.HUnit (testCase)
 import           Test.HUnit
 
+import           Export                         (writeToLilypondFile)
 import           GenSetup
 import           Music
-import           Score                          (writeToLilypondFile)
 
 scoreTests = testGroup "Score"
   [ testCase "successfully write to file" $

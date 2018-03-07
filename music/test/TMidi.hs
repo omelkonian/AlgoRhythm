@@ -7,8 +7,8 @@ import           Test.Framework                 (testGroup)
 import           Test.Framework.Providers.HUnit (testCase)
 import           Test.HUnit
 
+import           Export                         (writeToMidiFile)
 import           GenSetup
-import           MIDI                           (writeToMidiFile)
 import           Music
 
 midiTests = testGroup "MIDI"

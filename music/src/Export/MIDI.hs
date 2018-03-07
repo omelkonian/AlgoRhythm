@@ -1,7 +1,8 @@
-module MIDI (writeToMidiFile, play, playDev) where
+module Export.MIDI (writeToMidiFile, play, playDev) where
 
 import Control.Arrow ((>>>))
 import Data.Maybe (fromJust)
+import Data.Ratio ((%))
 import qualified Euterpea as E
 import Codec.Midi
 import Music
