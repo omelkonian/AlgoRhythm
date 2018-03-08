@@ -8,6 +8,8 @@ module Music.Transformations
        ( Transposable (..), (~>), (<~)
        , Invertible (..)
        , Retrogradable (..)
+       , Repeatable (..)
+       , Scalable (..)
        , musicToList, listToMusic
        , normalize
        ) where
@@ -17,12 +19,16 @@ import Data.Maybe    (catMaybes)
 
 import Music.Types
 
+-- | Operator precedence.
+infixl 5 ~>, <~
+infix  3 *~
+infix  2 ##
+
 -- | Anything that can be transposed with an 'Interval'.
 class Transposable a where
   trans :: Interval -> a -> a
   snart :: Interval -> a -> a
 
-infixl 5 ~>, <~
 (~>), (<~) :: Transposable a => a -> Interval -> a
 m ~> n = trans n m
 m <~ n = snart n m
@@ -94,11 +100,30 @@ instance Retrogradable [] a where
 
 instance Retrogradable Music a where
   (><) = normalize . retro
-    where retro (m :+: m')  = (m'><) :+: (m><)
-          retro  (m :=: m') = (m><) :=: (m'><)
-          retro  m          = m
-          
--- TODO scale durations
+    where retro (m :+: m') = (m'><) :+: (m><)
+          retro (m :=: m') = (m><) :=: (m'><)
+          retro m          = m
+
+-- | Anything that can be scaled up/down.
+class Scalable a where
+  (*~) :: Rational -> a -> a
+
+instance Scalable Duration where
+  (*~) n d = d / n
+
+instance Scalable a => Scalable [a] where
+  (*~) n xs = (n *~) <$> xs
+
+instance Scalable (Music a) where
+  (*~) n m = (n *~) <$$> m
+
+-- | Anything that can be repeated a number of times.
+class Repeatable a where
+  (##) :: Int -> a -> a
+
+instance Repeatable (Music a) where
+  n ## m | n == 1    = m
+         | otherwise = m :+: ((n-1) ## m)
 
 -- | Normalize nested application of sequential composition.
 normalize :: Music a -> Music a

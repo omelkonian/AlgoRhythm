@@ -1,5 +1,5 @@
+{-# LANGUAGE PostfixOperators    #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE PostfixOperators #-}
 module TMusic where
 
 import Control.Arrow                        ((>>>))
@@ -9,7 +9,7 @@ import Test.Framework.Providers.QuickCheck2 (testProperty)
 import Test.HUnit                           ((@?=))
 import Test.QuickCheck                      ((==>))
 
-import GenSetup ()
+import GenSetup
 import Music
 
 musicTests :: Test
@@ -25,24 +25,24 @@ musicTests = testGroup "Music"
       [ testCase "a note" $
           C#4 <|hn ~> M3 @?= E#4<|hn
       , testCase "a chord" $
-          let a  = chord $ C#4=|maj <|| 1
-              a' = chord $ C#5=|maj <|| 1
+          let a  = chord $ C#4=|maj <|| def
+              a' = chord $ C#5=|maj <|| def
           in  a ~> P8 @?= a'
       , testCase "a sequence of chords" $
           let a  = chord $ C#4=|maj7 <|| 1%8
               a' = chord $ Cs#4=|maj7 <|| 1%8
-              b  = chord $ Ds#4=|aug <|| 3%4
-              b' = chord $ E#4=|aug  <|| 3%4
+              b  = chord $ Ds#4=|aug <|| def
+              b' = chord $ E#4=|aug  <|| def
           in  line [a, b, a] ~> Mi2 @?= line [a', b', a']
       , testCase "a scale" $
-          let a  = line $ C#4+|minor <|| 1
-              a' = line $ B#4+|minor <|| 1
+          let a  = scale $ C#4+|minor <|| def
+              a' = scale $ B#4+|minor <|| def
           in  a ~> M7 @?= a'
       , testCase "a sequence of scales" $
           let a  = line $ C#4+|blues <|| 1%8
               a' = line $ Cs#4+|blues <|| 1%8
-              b  = line $ Ds#4+|harmonicMinor <|| 3%4
-              b' = line $ E#4+|harmonicMinor  <|| 3%4
+              b  = line $ Ds#4+|harmonicMinor <|| def
+              b' = line $ E#4+|harmonicMinor  <|| def
           in  line [a, b, a] ~> Mi2 @?= line [a', b', a']
       , testProperty "identityUp" $ \(p :: Pitch) (d :: Duration) ->
           p<|d ~> P1 == p<|d
@@ -68,25 +68,58 @@ musicTests = testGroup "Music"
           in  invert melody @?= melody'
       , testCase "a chord" $
           invert maj7 @?= [P1, Mi3, P5, Mi6]
+      , testProperty "a diminished chord" $ \n -> n > 0 ==>
+          invertN n dim7 == dim7
       , testCase "a scale" $
           mode vi ionian @?= minor
+      , testProperty "scale orbit" $ do
+          sc <- genScale
+          return $ or [invertN n sc == sc | n <- [5..9]]
+      , testProperty "chord orbit" $ do
+          ch <- genChord
+          return $ length ch < 5 ==> or [invertN n ch == ch | n <- [4, 5]]
       ]
   , testGroup "Retro"
       [ testCase "a melody" $
-          (line [C#4<|hn, (wn.-), Gs#4<|en] ><) @?=
-            line [Gs#4<|en, (wn.-), C#4<|hn]
+          (line [C#4<|hn, (wn~~), Gs#4<|en] ><) @?=
+            line [Gs#4<|en, (wn~~), C#4<|hn]
+      , testCase "a chord" $
+          (chord (C#4=|maj <||wn) ><) @?= chord (C#4=|maj <||wn)
+      , testCase "a scale" $
+          (scale (C#4+|major <||sn) ><) @?=
+            line (reverse [C, D, E, F, G, A, B]<#4<||sn)
       ]
-  , testGroup "TimeScaling"
-      []
+  , testGroup "Repeat"
+      [ testCase "a single note" $
+          let note = C#4<|wn
+          in  4 ## note @?= note :+: note :+: note :+: note
+      , testCase "a piece of music" $
+          let piece = line $ chord <$> [c, c', c']
+              c = Cs#4=|maj7 <|| def
+              c' = db#3=|m7b5 <|| def
+          in  3 ## piece @?= piece :+: piece :+: piece
+      ]
+  , testGroup "Scaling time"
+      [ testCase "to smaller single duration" $
+          2 *~ hn @?= qn
+      , testCase "to bigger single duration" $
+          1%2 *~ sn @?= en
+      , testCase "a melody" $
+          1%4 *~ C#4<|en :+: C#3<|sn @?= C#4<|hn :+: C#3<|qn
+      , testCase "a chord" $
+          4 *~ chord (C#4=|maj <||wn) @?= chord (C#4=|maj <||qn)
+      , testCase "a scale" $
+          1%4 *~ scale (eb#2+|bebopDorian <||qn) @?= scale (eb#2=|bebopDorian <||wn)
+      ]
   , testGroup "Other"
       [ testCase "toList" $
-          musicToList (C#4<|hn :+: Rest wn :+: C#5<|qn) @?=
+          musicToList (C#4<|hn :+: (wn~~) :+: C#5<|qn) @?=
             [(Just $ C#4, hn), (Nothing, wn), (Just $ C#5, qn)]
       , testCase "fromList" $
           listToMusic [(Just $ C#4, hn), (Nothing, wn), (Just $ C#5, qn)] @?=
-            (C#4<|hn :+: Rest wn :+: C#5<|qn)
+            (C#4<|hn :+: (wn~~) :+: C#5<|qn)
       , testCase "normalize" $
-          let m = (wn.-) :: Melody
+          let m = (wn~~) :: Melody
           in  normalize ((m :+: m) :+: m) @?= m :+: m :+: m
       ]
   ]

@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 {-# LANGUAGE DeriveGeneric         #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -23,17 +24,19 @@ module Music.Types
        , ToMusicCore (..)
        , BoundEnum (..)
          -- * Shorthands
-       , (%)
-       , line, chord
+       , (<$$>)
+       , (%), Default(..)
+       , line, chord, scale
        , absPitch, pitch
        ) where
 
-import           Data.Default
-import           Data.Monoid  ((<>))
-import           GHC.Generics (Generic)
-import           GHC.Real     ((%))
+import Data.Default (Default(..))
+import Data.Monoid  ((<>))
+import GHC.Generics (Generic)
+import GHC.Real     ((%))
 
-infixr 4 :+:, :=:
+-- | Operator precedence.
+infixr 4 :+:, :=:, <$$>
 
 ---------------------------------- TYPES ---------------------------------------
 data Music a = Music a :+: Music a
@@ -89,6 +92,13 @@ instance Functor Music where
   fmap f (Note d x) = Note d (f x)
   fmap _ (Rest d)   = Rest d
 
+-- For mapping over durations.
+(<$$>) :: (Duration -> Duration) -> Music a -> Music a
+f <$$> (m :+: m') = (f <$$> m) :+: (f <$$> m')
+f <$$> (m :=: m') = (f <$$> m) :=: (f <$$> m')
+f <$$> (Note d x) = Note (f d) x
+f <$$> (Rest d)   = Rest (f d)
+
 instance Foldable Music where
   foldMap f (m :+: m') = foldMap f m <> foldMap f m'
   foldMap f (m :=: _)  = foldMap f m
@@ -128,6 +138,8 @@ instance Default PitchClass where
   def = C
 instance Default Octave where
   def = Oct4
+instance {-# OVERLAPS #-} Default Duration where
+  def = 1
 
 -- Bounded enumeration of 'Music' datatypes.
 instance Enum Pitch where
@@ -158,9 +170,10 @@ class (Enum a, Bounded a) => BoundEnum a where
 instance (Enum a, Bounded a) => BoundEnum a where
 
 -- Useful shorthands.
-line, chord :: [Music a] -> Music a
+line, chord, scale :: [Music a] -> Music a
 line = foldr1 (:+:)
 chord = foldr1 (:=:)
+scale = line
 
 absPitch :: Pitch -> AbsPitch
 absPitch = fromEnum

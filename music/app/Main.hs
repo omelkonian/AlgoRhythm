@@ -14,7 +14,7 @@ main = do
   playDev 4 piece'
   where
     cIonian, eBlues, scalePiece :: Melody
-    scalePiece = cIonian :+: Rest wn :+: 8 ## eBlues
+    scalePiece = cIonian :+: Rest wn :+: (8 ## eBlues)
     cIonian = line $ (C#4)+|major <||(qn^^^)
     eBlues  = line $ (E#4)+|blues <||(qn^^^)
     piece, piece' :: Music FullPitch
