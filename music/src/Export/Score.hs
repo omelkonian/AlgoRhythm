@@ -6,13 +6,17 @@ import qualified Data.Music.Lilypond          as Ly
 import qualified Data.Music.Lilypond.Dynamics as LyD
 import           Music
 import           Text.Pretty
+import           Data.Text                    (replace, pack, unpack)
 
 
 -- | Write 'Music' to Lilypond file.
 writeToLilypondFile :: (ToMusicCore a) => FilePath -> Music a -> IO ()
 writeToLilypondFile path = musicToLilypondString >>> writeFile path
   where musicToLilypondString =
-          toMusicCore >>> musicToLilypond >>> pretty >>> runPrinter
+          toMusicCore >>> musicToLilypond >>> pretty >>> runPrinter >>> cleanup
+        cleanup =
+          unpack . replace (pack "|") (pack "\\staccatissimo") . pack
+
 
 -- | Convert `MusicCore` to `Data.Music.Lilypond.Music`.
 musicToLilypond :: MusicCore -> Ly.Music
