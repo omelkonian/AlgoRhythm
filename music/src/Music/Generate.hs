@@ -9,6 +9,8 @@ import Control.Monad.State
 import Test.QuickCheck           (generate)
 import Test.QuickCheck.Gen       (elements)
 
+import Export
+
 import Music
 
 -- | A 'Selector' is a function that given a list of elements
@@ -80,6 +82,16 @@ genChord n =
   chord <$> (map <$> (Note <$> rand)
                  <*> (zip <$> randN n <*> randN n))
 
+genConstraintedChord :: MusicGenerator Melody
+genConstraintedChord = do
+  -- Add constraints
+  modify (\st -> st { pc = (fst (pc st), [inC]) }) -- Chords in Cmaj
+  modify (\st -> st { dur = (fst (dur st), [inD]) }) -- Simple durations
+  -- Generate constrainted chord
+  genChord 4
+  where inC p = p `elem` [A, C, Ds, Fs]
+        inD d = d `elem` [en, sn, tn]
+
 -- | Lift an IO operation into the 'MusicGenerator' monad.
 io :: IO a -> MusicGenerator a
 io = liftIO
@@ -91,3 +103,8 @@ runGenerator = runGenerator' defaultState
 -- | Runs a generator on the provided state
 runGenerator' :: GenState -> MusicGenerator a -> IO a
 runGenerator' st gen = fst <$> runStateT gen st
+
+playGen :: ToMusicCore a => MusicGenerator (Music a) -> IO ()
+playGen music = do
+  m <- runGenerator music
+  playDev 4 m
