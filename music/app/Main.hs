@@ -4,23 +4,15 @@ module Main where
 
 import           Export (playDev, writeToLilypondFile, writeToMidiFile)
 import           Music
+import           Music.Generate
+import           Control.Monad
 
 main :: IO ()
 main = do
-  -- writeToMidiFile "piece.midi" piece'
-  -- writeToLilypondFile "piece.ly" piece'
-  -- play piece'
-
-  -- writeToMidiFile "scales.midi" scalePiece
-  -- writeToLilypondFile "scales.ly" scalePiece
-  -- play scalePiece
-
-  -- writeToLilypondFile "bluesChanges.ly" cBluesProgression
-  -- play cBluesProgression
-
-  writeToLilypondFile "blues.ly" cBluesImprov
-  writeToMidiFile "blues.midi" cBluesImprov
-    where 
+  x <- runGenerator generateSome
+  writeToLilypondFile "random.ly" x
+  writeToMidiFile "random.midi" x
+  where
     cIonian, eBlues, scalePiece :: Melody
     scalePiece = cIonian :+: Rest wn :+: (8 ## eBlues)
     cIonian = line $ (C#4)+|major <||(qn^^^)
@@ -35,6 +27,12 @@ main = do
                  | dyn <- [PPP,FFF,PPP,FFF]
                  | art <- [Staccatissimo,Tenuto,Marcato,Staccato]
                  ]
+
+    generateSome :: MusicGenerator Melody
+    generateSome = do
+      chords <- replicateM 4 (genChord 5)
+      notes  <- replicateM 10 (genNote)
+      return ((line chords) :=: line notes)
 
     bluesProgression :: Pitch -> Harmony
     bluesProgression p =

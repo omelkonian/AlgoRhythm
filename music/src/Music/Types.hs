@@ -68,7 +68,7 @@ data Dynamic = PPPPP | PPPP | PPP | PP | P | MP | MF | F_ | FF | FFF | FFFF
                deriving (Eq, Show, Generic, Enum, Bounded, Ord)
 
 data Articulation = Staccato | Staccatissimo | Marcato | Tenuto
-                    deriving (Eq, Show, Generic)
+                    deriving (Eq, Show, Generic, Enum, Bounded)
 
 data Interval = P1 | Mi2 | M2 | Mi3 | M3 | P4 | A4
               | P5 | Mi6 | M6 | Mi7 | M7 | P8
@@ -145,7 +145,6 @@ instance ToMusicCore Chord where
   toMusicCore (m :=: m')  = toMusicCore m :=: toMusicCore m'
   toMusicCore (Note d ps) = toMusicCore $ foldl1 (:=:) $ map (Note d) ps
   toMusicCore (Rest d)    = Rest d
-
 -- Default values.
 instance Default PitchClass where
   def = C
