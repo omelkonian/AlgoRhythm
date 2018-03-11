@@ -41,6 +41,10 @@ instance {-# OVERLAPS #-} Transposable a => Transposable (Music a) where
   trans i = fmap (trans i)
   snart i = fmap (snart i)
 
+instance {-# OVERLAPS #-} Transposable a => Transposable [a] where
+  trans i = fmap (trans i)
+  snart i = fmap (snart i)
+
 instance {-# OVERLAPS #-} Transposable FullPitch where
   trans i = first (moveN $ fromEnum i)
   snart i = first (moveN $ -(fromEnum i))

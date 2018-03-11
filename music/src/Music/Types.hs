@@ -27,10 +27,11 @@ module Music.Types
        , (<$$>)
        , (%), Default(..)
        , line, chord, scale
+       , flatten, chords
        , absPitch, pitch
        ) where
 
-import Data.Default (Default(..))
+import Data.Default (Default (..))
 import Data.Monoid  ((<>))
 import GHC.Generics (Generic)
 import GHC.Real     ((%))
@@ -105,6 +106,18 @@ instance Foldable Music where
   foldMap f (Note _ a) = f a
   foldMap _ _          = mempty
 
+-- TODO
+-- instance Applicative Music where
+--   pure = Note 1
+--
+--   (f :+: f') <*> x = (f <*> x) :+: (f' <*> x)
+--   (f :=: f') <*> x = (f <*> x) :=: (f' <*> x)
+--   (Note _ f) <*> x = f <$> x
+--   (Rest d) <*> _ = Rest d
+--
+-- instance Monad Music where
+--   m >>= k = join (k <$> m)
+
 -- | Core 'Music' datatype.
 type MusicCore = Music FullPitch
 
@@ -174,6 +187,18 @@ line, chord, scale :: [Music a] -> Music a
 line = foldr1 (:+:)
 chord = foldr1 (:=:)
 scale = line
+
+flatten :: Music (Music a) -> Music a
+flatten (m :+: m') = flatten m :+: flatten m'
+flatten (m :=: m') = flatten m :=: flatten m'
+flatten (Note _ m) = m
+flatten (Rest d)   = Rest d
+
+chords :: Harmony -> Melody
+chords (m :+: m')  = chords m :+: chords m'
+chords (m :=: m')  = chords m :=: chords m'
+chords (Note d xs) = chord (Note d <$> xs)
+chords (Rest d)    = Rest d
 
 absPitch :: Pitch -> AbsPitch
 absPitch = fromEnum
