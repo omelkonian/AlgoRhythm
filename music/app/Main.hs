@@ -19,10 +19,8 @@ main = do
   -- play cBluesProgression
 
   writeToLilypondFile "blues.ly" cBluesImprov
-  play $ 2 *~ cBluesImprov -- double time
-  where
-    play = playDev 4
-
+  writeToMidiFile "blues.midi" cBluesImprov
+    where 
     cIonian, eBlues, scalePiece :: Melody
     scalePiece = cIonian :+: Rest wn :+: (8 ## eBlues)
     cIonian = line $ (C#4)+|major <||(qn^^^)

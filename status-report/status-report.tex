@@ -65,7 +65,7 @@ data Music a = Music a :+: Music a
 \end{minipage}
 \end{center}
 
-For instance, in Western classical music it would appropriate to instantiate this type with an element representing 
+For instance, in Western classical music it would appropriate to instantiate this type with an element representing
 musical notes, represented as pairs of the pitch class (one of the 12 available ones) and the octave (how low/high is this note played). In South India's vocal tradition \textit{Konnakol}, on the other hand, one would only care about the rhythmic values (i.e. the durations), thus \icode{Music ()} would be more intuitive.
 
 This freedom essentially enable us to choose the abstraction level we wish our music programs to be written in. Most importantly, we define a core representation \icode{MusicCore}, which is what every other abstraction should convert to, in order to allow for rendering/exporting in different formats. The typeclass is given below:
@@ -80,9 +80,19 @@ class ToMusicCore a where
 We, naturally, focus on western music and define further helpful types/synonyms to represent common concepts encountered in music theory and practice (+ their conversions to \icode{MusicCore}). Furthermore, we provide operations often used in algorithmic music composition, such as transposition, inversion, mirroring, scaling and repetition. These are implemented as typeclasses, in order to allow user-defined \icode{Music} instances to extend them.
 
 Last but not least, we provide commonly-used \textit{constants} of these musical concepts, such as popular scales/chords/durations.
+\\ \\
+For the generator DSL, we define a monadic interface that combines the \icode{State} and \icode{IO} monad: \icode{type MusicGenerator a = StateT GenState IO a}. In the future, this type might become polymorphic in the type of the state, but as of yet this is not the case. The \icode{GenState} type is defined as follows:
+\begin{center}\begin{minipage}{0.7\textwidth}\begin{minted}[baselinestretch=1.1, fontsize=\small]{haskell}
+data GenState = GenState { selector :: Selector
+                         , pc       :: Entry PitchClass
+                         , oct      :: Entry Octave
+                         -- ... etc ...
+                         }
+\end{minted}
+\end{minipage}
+\end{center}
 
-\todo{generator monad, etc...}
-
+Where \icode{type Entry a = ([a], [Constraint a])}, representing all possible values for a certain type, and a list of constraints that are applied to that type. The type \icode{Selector} represents a function that selects a value from a list of possible values, and is defined as \icode{type Selector = forall a . [a] -> IO a}
 \subsection{Libraries}
 In order to avoid re-inventing the wheel, we utilized pre-existing Haskell libraries for exporting to MIDI/score formats. Specifically, we use \textbf{lilypond}\site{https://hackage.haskell.org/package/lilypond} to export music to Lilypond's digital score format, which can then be easily converted to PDF, etc... To enable MIDI export and music playback, we use \textbf{Euterpea}\site{https://hackage.haskell.org/package/Euterpea}. Since each of these libraries defines their own music datatype, integrating them entails converting from our \icode{MusicCore} type, which could be easily and naturally covered by the target types. For testing, we use HUnit\site{https://hackage.haskell.org/package/HUnit} and QuickCheck\site{https://hackage.haskell.org/package/QuickCheck}.
 
@@ -117,11 +127,39 @@ improviseOverD7 [a, b, c, d] =
 We attached the generated score (i.e. \icode{writeToLilypond cBluesImprov}) in the Appendix.
 
 \subsection{Generation DSL}
-\todo{explain monadic interface}
+Goal of the generation DSL is to provide an interface for a programmer to quickly generate random pieces of music. We aim to enable the user to customize the generation process by either constraining which values can be generated, or by supplying functions that generate values for the appropriate types in place in place of just sampling them from their domain with uniform probability. We refer to the latter as \icode{Selector}, as they select values from a certain domain.
+\subsection{Monadic Interface}
+The generation DSL is provided as a monadic interface that a programmer can use to steer the generation process. The \icode{GenState} type contains the internal state of a generator, consisting of the types to generate for, and a \icode{Selector}, and can be manipulated through several library functions, on top of the functions that the generic \icode{StateT} interface provides.
 
-\todo{hint on possible applications}
+A function \icode{runGenerator :: MusicGenerator a -> IO a} is provided that can be used to actually run a generator, alongside several functions that generate values for the data types used in our representation DSL. Below is a small example of a generator that generates a short melody.
 
-\todo{a small working example}
+\begin{minted}[baselinestretch=1.1, fontsize=\small]{haskell}
+-- Generator execution
+main :: IO ()
+main =
+  melody <- runGenerator randomMelody
+  -- from here, you could export to a MIDO or score file
+
+-- Generator definition
+randomMelody :: MusicGenerator Melody
+randomMelody = do
+  notes <- replicateM 10 genNote    -- Generate random notes
+  let melody = line notes           -- Combine into a melody
+  return $ melody :+: invert melody -- Sequence melody with it's inversion
+\end{minted}
+
+As can be seen from the example above, the generator DSL integrates very nicely with the existing representation DSL. Furthermore, since the generator interface is a monad, generators can be manipulated in the same way as any other monad, making it very easy to compose larger, more complex generators from smaller ones.
+
+\subsection{Future Extensions}
+Although the basic structure for the generation DSL is in place, there is still quite a lot of work to do. Up until now, work on the generation DSL has mainly focused on finding a suitable approach. Now that we have one, we can start defining library functions that operate on the data types of the representation DSL. A few of the more notable parts of the DSL that we will be working on in the upcoming weeks are:
+\begin{itemize}
+\item
+Suitable library functions for manipulating constraints, i.e. an intuitive way of adding (and removing) constraints from the generation process. We intend to add a \icode{local} function that will allow for partial generators to run under a different set of constraints without the need to remove and re-add all existing ones.
+\item
+The possibility to apply a custom \icode{Selector} to a generator to allow for non-uniform selection of values. The aim for this approach is to allow for many different possible ways of generating music besides complete randomness, such as chaos functions or L-systems. An added benefit is extensibility, as a programmer may come with their own procedure for determining appropriate musical values, which can then be applied to any \icode{MusicGenerator}.
+\end{itemize}
+
+Beside the extensions mentioned above, we also intend to include some small examples of applications for generators. Possibilities for this include automatically generating melodies over a certain chord progression or generating random exercises for certain scales or chords.
 
 \section{Planning}
 We are more or less on track with our initial planning, but we realised we cannot tackle Generation and Constraints separately. Thus, we decided to aim for a more integrated and iterative solution, where we gradually design/implement the GenDSL with constraints in mind. Since this task is not easily distributed amongst us, we will simultaneously work on GenDSL applications (i.e. chaotic systems, probabilistic rewriting grammars) from week 4 onwards, retrospectively adapting to new requirements we may encounter. Finally, the last week will be solely devoted to finalizing examples/applications.
@@ -144,4 +182,3 @@ We are more or less on track with our initial planning, but we realised we canno
 \includegraphics[scale=0.8]{blues.pdf}
 
 \end{document}
-
