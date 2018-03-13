@@ -9,9 +9,9 @@ import           Control.Monad
 
 main :: IO ()
 main = do
-  x <- runGenerator generateSome
-  writeToLilypondFile "random.ly" x
-  writeToMidiFile "random.midi" x
+  x <- runGenerator () example
+  writeToMidiFile "gen.midi" x
+  writeToLilypondFile "gen.ly" x
   where
     cIonian, eBlues, scalePiece :: Melody
     scalePiece = cIonian :+: Rest wn :+: (8 ## eBlues)
@@ -28,11 +28,11 @@ main = do
                  | art <- [Staccatissimo,Tenuto,Marcato,Staccato]
                  ]
 
-    generateSome :: MusicGenerator Melody
-    generateSome = do
-      chords <- replicateM 4 (genChord 5)
-      notes  <- replicateM 10 (genNote)
-      return ((line chords) :=: line notes)
+    -- generateSome :: MusicGenerator Melody
+    -- generateSome = do
+    --   chords <- replicateM 4 (genChord 5)
+    --   notes  <- replicateM 10 (genNote)
+    --   return ((line chords) :=: line notes)
 
     bluesProgression :: Pitch -> Harmony
     bluesProgression p =
@@ -51,3 +51,14 @@ main = do
     improviseOverD7 (a:b:c:d:_) =
       a <| qn :+: (b <~ Mi2) <| en :+: b <| en :+:
         (c <| qn :=: d <| qn) :+: (en~~) :+: d <| en
+
+example :: MusicGenerator () Melody
+example = do
+  addConstraint pitchClass (`elem` [C, D, E, F, G, A, B])
+  addConstraint octave     (`elem` [4,5])
+  addConstraint duration   (`elem` [1%4,1%8,1%16])
+  notes <- replicateM 7 genNote
+  let melody   = line notes
+  let melody'  = melody ~> P8 :=: melody
+  let melody'' = melody <~ P8 :=: melody :=: melody'
+  return $ melody :+: (melody :=: melody') :+: (melody :=: melody' :=: melody'')

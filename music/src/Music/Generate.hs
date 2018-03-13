@@ -1,110 +1,180 @@
 {-# LANGUAGE FlexibleInstances    #-}
 {-# LANGUAGE PostfixOperators     #-}
 {-# LANGUAGE RankNTypes           #-}
-{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE TypeSynonymInstances, MultiParamTypeClasses, FunctionalDependencies, TupleSections #-}
 
 module Music.Generate where
 
-import Control.Monad.State
-import Test.QuickCheck           (generate)
-import Test.QuickCheck.Gen       (elements)
+import Control.Monad.State       hiding (state)
+import Test.QuickCheck.Gen       (generate, frequency, elements)
 
 import Export
 
 import Music
 
--- | A 'Selector' is a function that given a list of elements
---   creates an IO operation that selects one of the elements
---   from the list. This function is required to be polymorphic
---   on the elements of the list.
-type Selector = forall b. [b] -> IO b
+type Selector s = forall a . s -> [(Double, a)] -> IO (a, s)
+
+data Accessor st s a = Accessor
+  { getValue :: (st s -> Entry s a)
+  , setValue :: (Entry s a -> st s -> st s)
+  }
 
 -- | State to be kept during generation
 type Constraint a = a -> Bool  -- TODO add IDs to add/remove
-type Entry a = ([a], [Constraint a])
-data GenState = GenState { selector :: Selector
-                         , pc       :: Entry PitchClass
-                         , oct      :: Entry Octave
-                         , dur      :: Entry Duration
-                         , itv      :: Entry Interval
-                         , dyn      :: Entry Dynamic
-                         , art      :: Entry Articulation
+
+data Entry s a = Entry { values      :: [(Double, a)]
+                       , constraints :: [Constraint a]
+                       , selector    :: Selector s
+                       }
+
+defaultEntry :: (Enum a, Bounded a) => s -> Entry s a
+defaultEntry sel = Entry { values      = zip (repeat 1) [minBound ..]
+                         , constraints = []
+                         , selector    = defaultSelector
                          }
 
+defaultSelector :: Selector s
+defaultSelector s xs =
+  let conv = (\(x , y) -> ((fromIntegral . round . (*) 100) x, elements [y]))
+    in do
+      x <- generate $ frequency (map conv xs)
+      return (x, s)
+
+data GenState s = GenState { state         :: s
+                           , pc            :: Entry s PitchClass
+                           , oct           :: Entry s Octave
+                           , dur           :: Entry s Duration
+                           , itv           :: Entry s Interval
+                           , dyn           :: Entry s Dynamic
+                           , art           :: Entry s Articulation
+                           }
+
+pitchClass   :: Accessor GenState s PitchClass
+pitchClass   = Accessor { getValue = pc , setValue = \e st -> st { pc  = e } }
+
+octave       :: Accessor GenState s Octave
+octave       = Accessor { getValue = oct, setValue = \e st -> st { oct = e } }
+
+duration     :: Accessor GenState s Duration
+duration     = Accessor { getValue = dur, setValue = \e st -> st { dur = e } }
+
+interval     :: Accessor GenState s Interval
+interval     = Accessor { getValue = itv, setValue = \e st -> st { itv = e } }
+
+dynamic      :: Accessor GenState s Dynamic
+dynamic      = Accessor { getValue = dyn, setValue = \e st -> st { dyn = e } }
+
+articulation :: Accessor GenState s Articulation
+articulation = Accessor { getValue = art, setValue = \e st -> st { art = e } }
+
 -- | A 'Music' generator is simply state monad wrapped around IO.
---   Note that this type is eta reduced and that it takes one parameter
---   to describe the result type of the generation.
-type MusicGenerator = StateT GenState IO
+type MusicGenerator s a = GenericMusicGenerator GenState s a
 
--- | Default state to start any generation with. This effectively means
---   that no constraints are applied and that the selector is just a function
---   that picks a random element from a list.
-defaultState :: GenState
-defaultState = GenState { selector = generate . elements
-                        , pc  = ([C ..], [])
-                        , oct = ([Oct0 ..], [])
-                        , dur = ([1%16,1%8,1%4,1%2], [])
-                        , itv = ([P1 ..], [])
-                        , dyn = ([PPPPP ..], [])
-                        , art = ([Staccato ..], [])
-                        }
+type GenericMusicGenerator st s a = StateT (st s) IO a
 
-constrain :: Entry a -> [a]
-constrain (xs, cs) = filter (\x -> all ($ x) cs) xs
+defaultState :: s -> GenState s
+defaultState st = GenState { state = st
+                           , pc  = defaultEntry st
+                           , oct = defaultEntry st
+                           , dur = Entry { values      =
+                                             zip (repeat 1) [1%1,1%2,1%4,1%8,1%16]
+                                         , constraints = []
+                                         , selector    = defaultSelector
+                                         }
+                           , itv = defaultEntry st
+                           , dyn = defaultEntry st
+                           , art = defaultEntry st
+                           }
 
-(??) :: (GenState -> ([a], [Constraint a])) -> MusicGenerator a
-(??) accessor = do
+getEntry :: Accessor st s a -> GenericMusicGenerator st s (Entry s a)
+getEntry accessor = do
   st <- get
-  io $ selector st (constrain $ accessor st)
+  return $ (getValue accessor) st
 
-class Generatable a where
-  rand :: MusicGenerator a
+putEntry :: Accessor st s a -> Entry s a -> GenericMusicGenerator st s ()
+putEntry accessor entry = modify $ (setValue accessor) entry
 
-  randN :: Int -> MusicGenerator [a]
+setState :: s -> MusicGenerator s ()
+setState state' = modify (\st -> st { state = state' })
+
+select :: Accessor GenState s a -> MusicGenerator s a
+select = gselect state setState
+
+gselect :: (st s -> s) -> (s -> GenericMusicGenerator st s ())
+                       -> Accessor st s a
+                       -> GenericMusicGenerator st s a
+gselect stateGet stateSet accessor = do
+  e <- getEntry accessor
+  genstate <- get
+  let st  = stateGet genstate
+  let e'  = constrain e
+  let sel = selector e
+  (value, st') <- io (sel st e')
+  stateSet st'
+  return value
+
+constrain :: Entry s a -> [(Double, a)]
+constrain e = filter (\(_, x) -> all ($ x) (constraints e)) $ values e
+
+addConstraint :: Accessor st s a -> Constraint a -> GenericMusicGenerator st s ()
+addConstraint accessor c = do
+  st <- get
+  e <- getEntry accessor
+  putEntry accessor (Entry { values      = values e
+                           , constraints = c:constraints e
+                           , selector    = selector e
+                            })
+
+(??) :: Accessor GenState s a -> MusicGenerator s a
+(??) = select
+
+class Generatable st a where
+  rand :: GenericMusicGenerator st s a
+
+  randN :: Int -> GenericMusicGenerator st s [a]
   randN n = replicateM n rand
 
-instance Generatable PitchClass where
-  rand = (pc??)
-instance Generatable Octave where
-  rand = (oct??)
-instance Generatable Duration where
-  rand = (dur??)
+instance Generatable GenState PitchClass where
+  rand = (pitchClass??)
+instance Generatable GenState Octave where
+  rand = (octave??)
+instance Generatable GenState Duration where
+  rand = (duration??)
 
-instance Generatable Pitch where
+instance Generatable GenState Pitch where
   rand = (,) <$> rand <*> rand
 
 -- | Generate a note within the currently applied constraints.
-genNote :: MusicGenerator Melody
+genNote :: MusicGenerator s Melody
 genNote = (<|) <$> rand <*> rand
 
-genChord :: Int -> MusicGenerator Melody
+genChord :: Int -> MusicGenerator s Melody
 genChord n =
   chord <$> (map <$> (Note <$> rand)
                  <*> (zip <$> randN n <*> randN n))
 
-genConstraintedChord :: MusicGenerator Melody
-genConstraintedChord = do
-  -- Add constraints
-  modify (\st -> st { pc = (fst (pc st), [inC]) }) -- Chords in Cmaj
-  modify (\st -> st { dur = (fst (dur st), [inD]) }) -- Simple durations
-  -- Generate constrainted chord
-  genChord 4
-  where inC p = p `elem` [A, C, Ds, Fs]
-        inD d = d `elem` [en, sn, tn]
-
 -- | Lift an IO operation into the 'MusicGenerator' monad.
-io :: IO a -> MusicGenerator a
+io :: IO a -> GenericMusicGenerator st s a
 io = liftIO
 
 -- | Runs a generator on the default state.
-runGenerator :: MusicGenerator a -> IO a
-runGenerator = runGenerator' defaultState
+runGenerator :: s -> MusicGenerator s a -> IO a
+runGenerator = runGenerator' . defaultState
 
 -- | Runs a generator on the provided state
-runGenerator' :: GenState -> MusicGenerator a -> IO a
+runGenerator' :: st s -> GenericMusicGenerator st s a -> IO a
 runGenerator' st gen = fst <$> runStateT gen st
 
-playGen :: ToMusicCore a => MusicGenerator (Music a) -> IO ()
-playGen music = do
-  m <- runGenerator music
+local :: (st s -> st s) -> GenericMusicGenerator st s a
+                        -> GenericMusicGenerator st s a
+local f gen = do
+  st <- get
+  io $ runGenerator' (f st) gen
+
+clean :: s -> MusicGenerator s a -> MusicGenerator s a
+clean s = local (const $ defaultState s)
+
+playGen :: ToMusicCore a => s -> MusicGenerator s (Music a) -> IO ()
+playGen s music = do
+  m <- runGenerator s music
   playDev 4 m
