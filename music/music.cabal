@@ -11,14 +11,10 @@ library
         Music.Transformations,
         Music.Operators,
         Music.Utilities,
-        Music.Generate,
-<<<<<<< d80b242b02d8a1decc936ee5ceefe063bc6b2a7e
-        Music.Chaos,
         Music.Vec,
-=======
+        Music.Generate,
         Music.Generate.Chaos,
         Music.Generate.QuickCheck,
->>>>>>> Put generators in separate folder.
         Export,
         Export.MIDI,
         Export.Score
@@ -35,7 +31,8 @@ library
         QuickCheck,
         mtl,
         derive,
-        containers
+        containers,
+        type-level-tf
     default-language: Haskell2010
     hs-source-dirs: src
     ghc-options: -Wall
@@ -44,7 +41,8 @@ executable music-exe
     main-is: Main.hs
     build-depends:
         base >=4.7 && <5,
-        music
+        music,
+        type-level-tf
     default-language: Haskell2010
     hs-source-dirs: app
     -- ghc-options: -threaded -rtsopts -with-rtsopts=-N
