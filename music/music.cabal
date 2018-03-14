@@ -11,7 +11,8 @@ library
         Music.Transformations,
         Music.Operators,
         Music.Utilities,
-        Music.Generate
+        Music.Generate,
+        Music.Chaos,
         Export,
         Export.MIDI,
         Export.Score
@@ -19,6 +20,7 @@ library
         base >=4.7 && <5,
         midi == 0.2.*,
         Euterpea == 2.0.*,
+        type-level-tf == 0.2.*,
         HCodecs == 0.5.*,
         lilypond == 1.9.*,
         data-default == 0.7.*,
