@@ -1,4 +1,4 @@
-{-# LANGUAGE GADTs #-}
+{-# LANGUAGE GADTs, BangPatterns #-}
 
 module Music.Generate.Chaos where
 
@@ -8,12 +8,16 @@ import Music.Generate
 import Export
 import Control.Monad (void)
 import Control.Monad.State hiding (state)
-import Data.TypeLevel.Num hiding ((-), (+), (*), (/))
+import Data.TypeLevel.Num hiding ((-), (+), (*), (/), mod)
+import System.IO.Unsafe
 
 chaosSelector :: Selector (ChaosState n)
 chaosSelector s as = do
   (ds, s') <- runStateT genNextIteration s
-  return (snd $ head as, s')
+  let d = head ds
+  let a = as !! (round (d * 10e100) `mod` length as)
+  let !x = unsafePerformIO $ print $ show ds
+  return (snd a, s')
 
 chaosEntry :: (Enum a, Bounded a) => (ChaosState n) -> Entry (ChaosState n) a
 chaosEntry _ = Entry { values      = zip (repeat 1) [minBound ..]
@@ -38,6 +42,9 @@ chaosState st = GenState { state = st
 -- | Runs a generator on the chaos state.
 runGenerator :: (ChaosState n) -> MusicGenerator (ChaosState n) a -> IO a
 runGenerator = runGenerator' . chaosState
+
+-- runGenerator :: s -> MusicGenerator s a -> IO a
+-- runGenerator = runGenerator' . quickCheckState
 
 clean :: (ChaosState n) -> MusicGenerator (ChaosState n) a -> MusicGenerator (ChaosState n) a
 clean s = modified (const $ chaosState s)
@@ -68,8 +75,8 @@ buildChaos :: Vec Double n                   -- ^ Initial variable values
            -> ChaosState n
 buildChaos vs fs = ChaosState { variables = vs , updateFunctions = fs }
 
-main :: IO ()
-main = void (runStateT genNextIteration chaos1)
+main' :: IO ()
+main' = void (runStateT genNextIteration chaos1)
 
 data ChaosState n =
   ChaosState { variables       :: Vec Double n
