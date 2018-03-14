@@ -103,6 +103,11 @@ getEntry accessor = do
 putEntry :: Accessor st s a -> Entry s a -> GenericMusicGenerator st s ()
 putEntry accessor entry = modify $ setValue accessor entry
 
+putSelector :: Accessor st s a -> Selector s -> GenericMusicGenerator st s ()
+putSelector accessor sel = do
+  entry <- getEntry accessor
+  putEntry accessor (entry { selector = sel })
+
 setState :: s -> MusicGenerator s ()
 setState state' = modify (\st -> st { state = state' })
 
@@ -172,12 +177,17 @@ runGenerator = runGenerator' . defaultState
 runGenerator' :: st s -> GenericMusicGenerator st s a -> IO a
 runGenerator' st gen = fst <$> runStateT gen st
 
-local :: (st s -> st s) -> GenericMusicGenerator st s a
+modified :: (st s -> st s) -> GenericMusicGenerator st s a
                         -> GenericMusicGenerator st s a
-local f gen = get >>= \st -> lift $ runGenerator' (f st) gen
+modified f gen = do
+  st <- get
+  io $ runGenerator' (f st) gen
 
 clean :: s -> MusicGenerator s a -> MusicGenerator s a
-clean s = local (const $ defaultState s)
+clean s = modified (const $ defaultState s)
+
+local :: GenericMusicGenerator st s a -> GenericMusicGenerator st s a
+local = modified id
 
 playGen :: ToMusicCore a => s -> MusicGenerator s (Music a) -> IO ()
 playGen s music = do
