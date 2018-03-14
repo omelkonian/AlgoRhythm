@@ -18,7 +18,7 @@ main = do
   -- writeToMidiFile "gen.midi" (x :=: (mel :+: ((mel><) ~> P8)))
   -- writeToLilypondFile "gen.ly" x
 
-bSolo :: MusicGenerator (ChaosState D2) Melody
+bSolo :: MusicGenerator s Melody
 bSolo = do
   addConstraint octave     (`elem` [4,5])
   addConstraint pitchClass (`elem` [E, G, A, As, B, D])
@@ -34,7 +34,7 @@ bSolo = do
   return $ run1 :+: run2
 
 
-tbBlues :: MusicGenerator (ChaosState D2) Melody
+tbBlues :: MusicGenerator s Melody
 tbBlues = do
   addConstraint duration ((==) hn)
   c1 <- one
@@ -42,21 +42,21 @@ tbBlues = do
   c5 <- five
   return ((8##c1) :+: (4##c4) :+: (4##c1) :+: (2##c5) :+: (2##c4) :+: (2##c1) :+: (2##c5))
 
-one :: MusicGenerator (ChaosState D2) Melody
+one :: MusicGenerator s Melody
 one = local $ do
   addConstraint pitchClass (`elem` [E, Gs, B])
   addConstraint octave     (`elem` [3, 4])
   c <- genChord 4
   return $ c
 
-four :: MusicGenerator (ChaosState D2) Melody
+four :: MusicGenerator s Melody
 four = local $ do
   addConstraint pitchClass (`elem` [A, Cs, E])
   addConstraint octave     (`elem` [3,4])
   c <- genChord 4
   return $ c
 
-five :: MusicGenerator (ChaosState D2) Melody
+five :: MusicGenerator s Melody
 five = local $ do
   addConstraint pitchClass (`elem` [B, Ds, Fs, A])
   addConstraint octave     (`elem` [3, 4])
