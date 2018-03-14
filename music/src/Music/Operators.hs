@@ -39,6 +39,6 @@ p <: attrs = (p, attrs)
 (<||) sc d = (<| d) <$> sc
 
 -- Instantiating chords/scales.
-(=|), (+|) :: (Abstract rep Pitch inst) => Pitch -> rep -> inst
+(=|), (+|) :: (Abstract rep a inst) => a -> rep -> inst
 (=|) = instantiate
 (+|) = instantiate

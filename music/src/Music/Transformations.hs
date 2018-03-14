@@ -5,7 +5,7 @@
 {-# LANGUAGE PostfixOperators      #-}
 {-# LANGUAGE UndecidableInstances  #-}
 module Music.Transformations
-       ( Transposable (..), (~>), (<~)
+       ( Transposable (..)
        , Invertible (..)
        , Retrogradable (..)
        , Repeatable (..)
@@ -26,33 +26,38 @@ infix  2 ##
 
 -- | Anything that can be transposed with an 'Interval'.
 class Transposable a where
-  trans :: Interval -> a -> a
-  snart :: Interval -> a -> a
-
-(~>), (<~) :: Transposable a => a -> Interval -> a
-m ~> n = trans n m
-m <~ n = snart n m
+  trans, trans_, snart, snart_ :: Interval -> a -> a
+  (~>), (<~), (~~>), (<~~) :: a -> Interval -> a
+  (~>) = flip trans ; (<~) = flip snart ; (~~>) = flip trans_ ; (<~~) = flip snart_
 
 instance {-# OVERLAPPABLE #-} BoundEnum a => Transposable a where
-  trans i = safeToEnum . (+ fromEnum i) . fromEnum
-  snart i = safeToEnum . subtract (fromEnum i) . fromEnum
+  trans  = moveN . fromEnum
+  snart  = moveN . negate . fromEnum
+  trans_ = moveN_ . fromEnum
+  snart_ = moveN_ . negate . fromEnum
 
 instance {-# OVERLAPS #-} Transposable a => Transposable (Music a) where
-  trans i = fmap (trans i)
-  snart i = fmap (snart i)
+  trans  = fmap . trans
+  snart  = fmap . snart
+  trans_ = fmap . trans_
+  snart_ = fmap . snart_
 
 instance {-# OVERLAPS #-} Transposable a => Transposable [a] where
-  trans i = fmap (trans i)
-  snart i = fmap (snart i)
+  trans  = fmap . trans
+  snart  = fmap . snart
+  trans_ = fmap . trans_
+  snart_ = fmap . snart_
 
 instance {-# OVERLAPS #-} Transposable FullPitch where
-  trans i = first (moveN $ fromEnum i)
-  snart i = first (moveN $ -(fromEnum i))
+  trans  i = first (moveN  $ fromEnum i)
+  snart  i = first (moveN  $ -(fromEnum i))
+  trans_ i = first (moveN_ $ fromEnum i)
+  snart_ i = first (moveN_ $ -(fromEnum i))
 
-instance {-# OVERLAPS #-} (BoundEnum a) => Num a where
-  i + i' = safeToEnum $ fromEnum i + fromEnum i'
-  i - i' = safeToEnum $ fromEnum i - fromEnum i'
-  i * i' = safeToEnum $ fromEnum i * fromEnum i'
+instance {-# OVERLAPS #-} (Enum a, BoundEnum a) => Num a where
+  i + i' = moveN (fromEnum i') i
+  i - i' = moveN (- (fromEnum i')) i
+  i * i' = moveN (fromEnum i * (fromEnum i' - 1)) i
   abs = safeToEnum . abs . fromEnum
   signum = safeToEnum . signum . fromEnum
   fromInteger = safeToEnum . fromInteger

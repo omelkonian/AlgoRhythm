@@ -3,7 +3,7 @@
 
 {-# OPTIONS_GHC -fno-warn-unticked-promoted-constructors #-}
 
-module Peano (
+module Utils.Peano (
     Nat  (..)
   , SNat (..)
   , derivePeanoAliases

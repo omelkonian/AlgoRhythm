@@ -6,13 +6,13 @@
 -- Suppress all unused TH-generated type aliases.
 {-# OPTIONS_GHC -fno-warn-unused-top-binds               #-}
 
-module Vec (
-    module Vec
-  , module Peano
+module Utils.Vec (
+    module Utils.Vec
+  , module Utils.Peano
 ) where
 
 import Prelude hiding (pred)
-import Peano
+import Utils.Peano
 import Data.Monoid ((<>))
 
 -- | Derives type aliases D0, D1, ..., D100, where Da is equivalent to the

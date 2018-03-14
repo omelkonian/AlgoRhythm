@@ -1,12 +1,15 @@
-{-# LANGUAGE FlexibleInstances    #-}
-{-# LANGUAGE PostfixOperators     #-}
-{-# LANGUAGE RankNTypes           #-}
-{-# LANGUAGE TypeSynonymInstances, MultiParamTypeClasses, FunctionalDependencies, TupleSections #-}
+{-# LANGUAGE FlexibleInstances      #-}
+{-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE MultiParamTypeClasses  #-}
+{-# LANGUAGE PostfixOperators       #-}
+{-# LANGUAGE RankNTypes             #-}
+{-# LANGUAGE TupleSections          #-}
+{-# LANGUAGE TypeSynonymInstances   #-}
 
 module Generate.Generate where
 
-import Music
 import Control.Monad.State hiding (state)
+import Music
 
 type Weight = Double
 type Selector s = forall a . s -> [(Weight, a)] -> IO (a, s)
@@ -24,13 +27,13 @@ data Entry s a = Entry { values      :: [(Weight, a)]
                        , selector    :: Selector s
                        }
 
-data GenState s = GenState { state         :: s
-                           , pc            :: Entry s PitchClass
-                           , oct           :: Entry s Octave
-                           , dur           :: Entry s Duration
-                           , itv           :: Entry s Interval
-                           , dyn           :: Entry s Dynamic
-                           , art           :: Entry s Articulation
+data GenState s = GenState { state :: s
+                           , pc    :: Entry s PitchClass
+                           , oct   :: Entry s Octave
+                           , dur   :: Entry s Duration
+                           , itv   :: Entry s Interval
+                           , dyn   :: Entry s Dynamic
+                           , art   :: Entry s Articulation
                            }
 
 pitchClass   :: Accessor GenState s PitchClass
@@ -75,9 +78,10 @@ setState state' = modify (\st -> st { state = state' })
 select :: Accessor GenState s a -> MusicGenerator s a
 select = gselect state setState
 
-gselect :: (st s -> s) -> (s -> GenericMusicGenerator st s ())
-                       -> Accessor st s a
-                       -> GenericMusicGenerator st s a
+gselect :: (st s -> s)
+        -> (s -> GenericMusicGenerator st s ())
+        -> Accessor st s a
+        -> GenericMusicGenerator st s a
 gselect stateGet stateSet accessor = do
   e <- getEntry accessor
   genstate <- get
@@ -127,15 +131,13 @@ genChord n =
   chord <$> (map <$> (Note <$> rand)
                  <*> (zip <$> randN n <*> randN n))
 
--- runChaosGenerator :: s -> MusicGenerator s a -> IO a
--- runChaosGenerator = runGenerator' . chaos1
-
 -- | Runs a generator on the provided state
 runGenerator' :: st s -> GenericMusicGenerator st s a -> IO a
 runGenerator' st gen = fst <$> runStateT gen st
 
-modified :: (st s -> st s) -> GenericMusicGenerator st s a
-                        -> GenericMusicGenerator st s a
+modified :: (st s -> st s)
+         -> GenericMusicGenerator st s a
+         -> GenericMusicGenerator st s a
 modified f gen = get >>= \st -> lift $ runGenerator' (f st) gen
 
 local :: GenericMusicGenerator st s a -> GenericMusicGenerator st s a

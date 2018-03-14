@@ -3,7 +3,7 @@
 module Generate.Chaos where
 
 import Music
-import Vec
+import Utils.Vec
 import Generate.Generate
 import Export
 import Control.Monad (void)

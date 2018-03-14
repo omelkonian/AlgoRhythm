@@ -19,14 +19,13 @@ class Abstract rep  -- type of the abstract representation
   instantiate :: a -> rep -> inst
 
 -- | Covers both 'Chord' and 'Scale'.
-instance {-# OVERLAPPABLE #-} (Functor f, Abstract rep a inst)
-                           => Abstract (f rep) a (f inst) where
-  instantiate a = fmap (instantiate a)
+instance Abstract [Interval] Pitch [Pitch] where
+  instantiate p rep = [p ~~> i | i <- rep]
 
-instance {-# OVERLAPS #-} Abstract [Interval] Pitch [Pitch] where
-  instantiate p rep = [p ~> i | i <- rep]
+instance Abstract [Interval] PitchClass [PitchClass] where
+  instantiate p rep = [p ~~> if i - P8 > P1 then i - P8 else i | i <- rep]
 
-instance Abstract rep a inst => Abstract rep (Music a) (Music inst) where
+instance (Functor f, Abstract rep a inst) => Abstract rep (f a) (f inst) where
   instantiate ma rep = (`instantiate` rep) <$> ma
 
 -- Aliases.

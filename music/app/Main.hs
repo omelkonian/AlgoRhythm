@@ -1,18 +1,25 @@
-{-# LANGUAGE ParallelListComp #-}
 {-# LANGUAGE PostfixOperators #-}
+{-# LANGUAGE FlexibleContexts #-}
 module Main where
 
 import Control.Monad
-import Export         (playDev, writeToLilypondFile, writeToMidiFile, defaultMIDIConfig)
+import Export
 import Generate
 import Generate.Chaos
 import Music
+import Grammar.Examples (final)
 
 main :: IO ()
 main = do
+  cp <- final C (16 * wn)
+  -- writeToMidiFile "cp.midi" cp
+  -- putStrLn "Wrote to MIDI."
+  playDev 4 (MIDIConfig (3%5) RhodesPiano) cp
+  putStrLn "Playback finished."
+
   -- x   <- runGenerator chaos1 tbBlues
-  mel <- runGenerator chaos1 bSolo
-  playDev 4 defaultMIDIConfig mel
+  -- mel <- runGenerator chaos1 bSolo
+  -- playDev 4 defaultMIDIConfig mel
   -- writeToMidiFile "gen.midi" (x :=: (mel :+: ((mel><) ~> P8)))
   -- writeToLilypondFile "gen.ly" x
 
@@ -21,7 +28,7 @@ bSolo = do
   addConstraint octave     (`elem` [4,5])
   addConstraint pitchClass (`elem` [E, G, A, As, B, D])
   run1 <- local $ do
-    addConstraint duration ((==) (1%16))
+    addConstraint duration ((1%16) ==)
     notes <- replicateM 12 genNote
     return $ line notes
   run2 <- local $ do
@@ -34,29 +41,17 @@ bSolo = do
 
 tbBlues :: MusicGenerator s Melody
 tbBlues = do
-  addConstraint duration ((==) hn)
-  c1 <- one
-  c4 <- four
-  c5 <- five
+  addConstraint duration (hn ==)
+  c1 <- bluesChord E d7
+  c4 <- bluesChord A d9
+  c5 <- bluesChord B d7s9
   return ((8##c1) :+: (4##c4) :+: (4##c1) :+: (2##c5) :+: (2##c4) :+: (2##c1) :+: (2##c5))
 
-one :: MusicGenerator s Melody
-one = local $ do
-  addConstraint pitchClass (`elem` [E, Gs, B])
-  addConstraint octave     (`elem` [3, 4])
-  c <- genChord 4
-  return $ c
+bluesChord :: PitchClass -> AbstractChord -> MusicGenerator s Melody
+bluesChord p ch = inChord p ch >> inOctaves [3,4] >> genChord 4
 
-four :: MusicGenerator s Melody
-four = local $ do
-  addConstraint pitchClass (`elem` [A, Cs, E])
-  addConstraint octave     (`elem` [3,4])
-  c <- genChord 4
-  return $ c
+inChord :: PitchClass -> AbstractChord -> MusicGenerator s ()
+inChord p ch = addConstraint pitchClass (`elem` (p=|ch :: [PitchClass]))
 
-five :: MusicGenerator s Melody
-five = local $ do
-  addConstraint pitchClass (`elem` [B, Ds, Fs, A])
-  addConstraint octave     (`elem` [3, 4])
-  c <- genChord 4
-  return $ c
+inOctaves :: [Octave] -> MusicGenerator s ()
+inOctaves oc = addConstraint octave (`elem` oc)

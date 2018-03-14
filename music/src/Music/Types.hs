@@ -18,13 +18,13 @@ module Music.Types
        , Articulation (..)
        , MusicCore, AbsPitch
        , Melody, Rhythm, Harmony
-       , Chord, AbstractChord
-       , Scale, AbstractScale
+       , Chord, SemiChord, AbstractChord
+       , Scale, SemiScale, AbstractScale
          -- * Classes
        , ToMusicCore (..)
        , BoundEnum (..)
          -- * Shorthands
-       , (<$$>)
+       , (<$$>), (<$$$>)
        , (%), Default(..)
        , line, chord, scale
        , flatten, chords
@@ -78,6 +78,8 @@ data Interval = P1 | Mi2 | M2 | Mi3 | M3 | P4 | A4
 
 type Chord = [Pitch]
 type Scale = [Pitch]
+type SemiChord = [PitchClass]
+type SemiScale = [PitchClass]
 type AbstractChord = [Interval]
 type AbstractScale = [Interval]
 
@@ -99,6 +101,12 @@ f <$$> (m :+: m') = (f <$$> m) :+: (f <$$> m')
 f <$$> (m :=: m') = (f <$$> m) :=: (f <$$> m')
 f <$$> (Note d x) = Note (f d) x
 f <$$> (Rest d)   = Rest (f d)
+
+-- For mapping primitive musical elements (i.e. 'Note' and 'Rest').
+(<$$$>) :: (Music a -> Music b) -> Music a -> Music b
+f <$$$> (m :+: m') = (f <$$$> m) :+: (f <$$$> m')
+f <$$$> (m :=: m') = (f <$$$> m) :=: (f <$$$> m')
+f <$$$> m = f m
 
 instance Foldable Music where
   foldMap f (m :+: m') = foldMap f m <> foldMap f m'
@@ -140,11 +148,21 @@ instance ToMusicCore AbsPitch where
 instance ToMusicCore Duration where
   toMusicCore = toMusicCore . fmap (const (def :: Pitch))
 
-instance ToMusicCore Chord where
+instance ToMusicCore PitchClass where
+  toMusicCore = fmap (\pc -> ((pc, def), def))
+
+instance ToMusicCore a => ToMusicCore [a] where
   toMusicCore (m :+: m')  = toMusicCore m :+: toMusicCore m'
   toMusicCore (m :=: m')  = toMusicCore m :=: toMusicCore m'
-  toMusicCore (Note d ps) = toMusicCore $ foldl1 (:=:) $ map (Note d) ps
+  toMusicCore (Note d ps) = toMusicCore $ chord $ Note d <$> ps
   toMusicCore (Rest d)    = Rest d
+
+-- instance ToMusicCore Chord where
+--   toMusicCore (m :+: m')  = toMusicCore m :+: toMusicCore m'
+--   toMusicCore (m :=: m')  = toMusicCore m :=: toMusicCore m'
+--   toMusicCore (Note d ps) = toMusicCore $ chord $ Note d <$> ps
+--   toMusicCore (Rest d)    = Rest d
+
 -- Default values.
 instance Default PitchClass where
   def = C
@@ -160,7 +178,7 @@ instance Enum Pitch where
 
   fromEnum (pc, oct) = 12 * fromEnum oct + fromEnum pc
 
-class (Enum a, Bounded a) => BoundEnum a where
+class (Eq a, Enum a, Bounded a) => BoundEnum a where
   -- | Safely convert from 'Int', respecting bounds.
   safeToEnum :: Int -> a
   safeToEnum = toEnum . min top . max bottom
@@ -169,17 +187,33 @@ class (Enum a, Bounded a) => BoundEnum a where
 
   -- | Get next value or min/max if out-of-bounds.
   next ::  a -> a
-  next = safeToEnum . (+1) . fromEnum
+  next = safeToEnum . (+ 1) . fromEnum
 
   -- | Get previous value or min/max if out-of-bounds.
   prev :: a -> a
   prev = safeToEnum . subtract 1 . fromEnum
 
+  -- | Move n-times forward.
   moveN :: Int -> a -> a
   moveN n a | n < 0     = iterate prev a !! abs n
             | otherwise = iterate next a !! n
 
-instance (Enum a, Bounded a) => BoundEnum a where
+  -- | Variant of 'prev' that cycles forth to the maximum.
+  prev_ :: Eq a => a -> a
+  prev_ a | a == minBound = maxBound
+          | otherwise = prev a
+
+  -- | Variant of 'next' that cycles back to the minimum.
+  next_ :: Eq a => a -> a
+  next_ a | a == maxBound = minBound
+          | otherwise = next a
+
+  -- | Cycle n-times forward.
+  moveN_ :: Eq a => Int -> a -> a
+  moveN_ n a | n < 0     = iterate next_ a !! abs n
+             | otherwise = iterate prev_ a !! n
+
+instance (Eq a, Enum a, Bounded a) => BoundEnum a where
 
 -- Useful shorthands.
 line, chord, scale :: [Music a] -> Music a

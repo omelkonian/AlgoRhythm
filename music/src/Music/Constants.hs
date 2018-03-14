@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -fno-warn-missing-signatures #-}
 {-# LANGUAGE PostfixOperators #-}
 module Music.Constants where
 
@@ -31,8 +32,11 @@ tripl = (^^^)
 dot = (^.)
 
 ------------------------------------ Chords ------------------------------------
-maj, mi, dim, aug, sus4, d7sus4, maj6, m6, maj7, m7, d7, dim7, m7b5,
- maj9, m9, d9, d7b5, d7s5, d7b9, d7s9, d7b5b9, d7b5s9, d7s5b9, d7s5s9 :: AbstractChord
+allChords =
+  [ maj, mi, dim, aug, sus4, d7sus4, maj6, m6, maj7, m7, d7, dim7, m7b5
+  , maj9, m9, d9, d7b5, d7s5, d7b9, d7s9, d7b5b9, d7b5s9, d7s5b9, d7s5s9
+  ]
+
 -- Triads
 maj = [P1, M3, P5]
 mi  = [P1, Mi3, P5]
@@ -65,10 +69,12 @@ d7s5b9 = [P1, M3, Mi6, Mi7, Mi9]
 d7s5s9 = [P1, M3, Mi6, Mi7, A9]
 
 ------------------------------------ Scales ------------------------------------
-major, pentatonicMajor, ionian, dorian, phrygian, lydian, mixolydian, aeolian,
-  locrian, minor, harmonicMinor, melodicMinor, pentatonicMinor, blues,
-    bebopDominant, bebopDorian, bebopMajor, bebopMelodicMinor, bebopHarmonicMinor,
-      altered, wholeTone, halfDiminished, flamenco :: AbstractScale
+allScales =
+  [ major, pentatonicMajor, ionian, dorian, phrygian, lydian, mixolydian, aeolian
+  , locrian, minor, harmonicMinor, melodicMinor, pentatonicMinor, blues
+  , bebopDominant, bebopDorian, bebopMajor, bebopMelodicMinor, bebopHarmonicMinor
+  , altered, wholeTone, halfDiminished, flamenco
+  ]
 
 -- Major scales.
 major = [P1, M2, M3, P4, P5, M6, M7]
