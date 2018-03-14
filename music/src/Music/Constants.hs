@@ -1,10 +1,10 @@
 {-# LANGUAGE PostfixOperators #-}
 module Music.Constants where
 
-import           Data.List       (insert)
+import Data.List (insert)
 
-import           Music.Types
-import           Music.Utilities
+import Music.Types
+import Music.Utilities
 
 -- Roman numbers.
 i, ii, iii, iv, v, vi, vii :: Int

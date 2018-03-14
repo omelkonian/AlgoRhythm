@@ -6,8 +6,8 @@ module Music
        , module Music.Utilities
        ) where
 
-import           Music.Constants
-import           Music.Operators
-import           Music.Transformations
-import           Music.Types
-import           Music.Utilities
+import Music.Constants
+import Music.Operators
+import Music.Transformations
+import Music.Types
+import Music.Utilities

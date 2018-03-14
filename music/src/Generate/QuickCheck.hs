@@ -1,7 +1,7 @@
-module Music.Generate.QuickCheck where
+module Generate.QuickCheck where
 
 import Music
-import Music.Generate
+import Generate.Generate
 import Test.QuickCheck.Gen --(generate, frequency, elements)
 import Export
 

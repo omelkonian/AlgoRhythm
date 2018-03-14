@@ -7,7 +7,7 @@
 {-# language PolyKinds            #-}
 {-# language ScopedTypeVariables  #-}
 
-module Music.Vec (
+module Vec (
     Vec (..)
   , toList
   , map'

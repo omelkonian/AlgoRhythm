@@ -3,7 +3,7 @@
 {-# LANGUAGE RankNTypes           #-}
 {-# LANGUAGE TypeSynonymInstances, MultiParamTypeClasses, FunctionalDependencies, TupleSections #-}
 
-module Music.Generate where
+module Generate.Generate where
 
 import Music
 import Control.Monad.State hiding (state)

@@ -1,10 +1,10 @@
 {-# LANGUAGE GADTs, BangPatterns #-}
 
-module Music.Generate.Chaos where
+module Generate.Chaos where
 
 import Music
-import Music.Vec
-import Music.Generate
+import Vec
+import Generate.Generate
 import Export
 import Control.Monad (void)
 import Control.Monad.State hiding (state)

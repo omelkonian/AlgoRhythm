@@ -7,8 +7,8 @@ module Music.Utilities
        , line, chord
        ) where
 
-import           Music.Transformations
-import           Music.Types
+import Music.Transformations
+import Music.Types
 
 -- | Represents abstractions of certain music elements.
 -- e.g. Abstract AbstractChord Pitch Chord

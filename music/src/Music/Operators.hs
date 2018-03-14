@@ -9,8 +9,8 @@ module Music.Operators
        , (~~)
        ) where
 
-import           Music.Types
-import           Music.Utilities
+import Music.Types
+import Music.Utilities
 
 -- | Operator precedence.
 infix  9 #, ~~

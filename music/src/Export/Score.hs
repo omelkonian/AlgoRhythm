@@ -4,9 +4,9 @@ import           Control.Arrow                ((>>>))
 import           Data.Maybe
 import qualified Data.Music.Lilypond          as Ly
 import qualified Data.Music.Lilypond.Dynamics as LyD
+import           Data.Text                    (pack, replace, unpack)
 import           Music
 import           Text.Pretty
-import           Data.Text                    (replace, pack, unpack)
 
 
 -- | Write 'Music' to Lilypond file.

@@ -1,10 +1,10 @@
 module Export.MIDI (writeToMidiFile, play, playDev) where
 
-import Control.Arrow ((>>>))
-import Data.Ratio ((%))
-import qualified Euterpea as E
-import Codec.Midi
-import Music
+import           Codec.Midi
+import           Control.Arrow ((>>>))
+import           Data.Ratio    ((%))
+import qualified Euterpea      as E
+import           Music
 
 -- | Write `Music` to MIDI file.
 writeToMidiFile :: (ToMusicCore a) => FilePath -> Music a -> IO ()
@@ -27,9 +27,9 @@ musicToMidi m = E.toMidi (E.perform (musicToE m))
 
 -- | Converts `MusicCore` to Euterpea Music1
 musicToE :: MusicCore -> E.Music1
-musicToE (m :+: m') = (E.:+:) (musicToE m) (musicToE m')
-musicToE (m :=: m') = (E.:=:) (musicToE m) (musicToE m')
-musicToE (Rest dur) = E.rest dur
+musicToE (m :+: m')            = (E.:+:) (musicToE m) (musicToE m')
+musicToE (m :=: m')            = (E.:=:) (musicToE m) (musicToE m')
+musicToE (Rest dur)            = E.rest dur
 musicToE (Note dur (p, attrs)) = noteToE dur (p, attrs)
 
 -- | Converts MusicCore Note to a Euterpea Music1 Note.

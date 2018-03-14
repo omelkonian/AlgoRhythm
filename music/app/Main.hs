@@ -2,19 +2,19 @@
 {-# LANGUAGE PostfixOperators #-}
 module Main where
 
-import           Export (playDev, writeToLilypondFile, writeToMidiFile)
-import           Music
-import           Music.Generate
-import           Control.Monad
+import Control.Monad
+import Export         (playDev, writeToLilypondFile, writeToMidiFile)
+import Generate
+import Generate.Chaos
+import Music
 
-import           Data.TypeLevel.Num hiding ((-), (+), (*), (/))
-import           Music.Generate.Chaos
+import Data.TypeLevel.Num hiding ((*), (+), (-), (/))
 
 main :: IO ()
 main = do
   -- x   <- runGenerator chaos1 tbBlues
   mel <- runGenerator chaos1 bSolo
-  playDev 0 mel
+  playDev 4 mel
   -- writeToMidiFile "gen.midi" (x :=: (mel :+: ((mel><) ~> P8)))
   -- writeToLilypondFile "gen.ly" x
 
