@@ -13,6 +13,7 @@ library
         Music.Utilities,
         Music.Generate,
         Music.Chaos,
+        Music.Vec,
         Export,
         Export.MIDI,
         Export.Score
