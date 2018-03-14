@@ -12,33 +12,42 @@ import Export
 
 import Music
 
-type Selector s = forall a . s -> [(Double, a)] -> IO (a, s)
+import Music.Chaos hiding (generate)
+import qualified Music.Chaos as C
+import Data.TypeLevel.Num hiding ((-), (+), (*), (/))
+
+-- defaultChaos :: GenState (ChaosState D2)
+-- defaultChaos = defaultState chaos1
+
+-- chaosSelector :: Selector (ChaosState D2)
+-- chaosSelector s xs = undefined
+
+type Weight = Double
+type Selector s = forall a . s -> [(Weight, a)] -> IO (a, s)
 
 data Accessor st s a = Accessor
-  { getValue :: (st s -> Entry s a)
-  , setValue :: (Entry s a -> st s -> st s)
+  { getValue :: st s -> Entry s a
+  , setValue :: Entry s a -> st s -> st s
   }
 
 -- | State to be kept during generation
 type Constraint a = a -> Bool  -- TODO add IDs to add/remove
 
-data Entry s a = Entry { values      :: [(Double, a)]
+data Entry s a = Entry { values      :: [(Weight, a)]
                        , constraints :: [Constraint a]
                        , selector    :: Selector s
                        }
 
 defaultEntry :: (Enum a, Bounded a) => s -> Entry s a
-defaultEntry sel = Entry { values      = zip (repeat 1) [minBound ..]
-                         , constraints = []
-                         , selector    = defaultSelector
-                         }
+defaultEntry _ = Entry { values      = zip (repeat 1) [minBound ..]
+                       , constraints = []
+                       , selector    = defaultSelector
+                       }
 
 defaultSelector :: Selector s
-defaultSelector s xs =
-  let conv = (\(x , y) -> ((fromIntegral . round . (*) 100) x, elements [y]))
-    in do
-      x <- generate $ frequency (map conv xs)
-      return (x, s)
+defaultSelector s as =
+  let conv (x, a) = ((round . (*) 100) x, elements [a]) in
+    generate $ frequency (map conv as) >>= \a -> return (a,s)
 
 data GenState s = GenState { state         :: s
                            , pc            :: Entry s PitchClass
@@ -89,10 +98,10 @@ defaultState st = GenState { state = st
 getEntry :: Accessor st s a -> GenericMusicGenerator st s (Entry s a)
 getEntry accessor = do
   st <- get
-  return $ (getValue accessor) st
+  return $ getValue accessor st
 
 putEntry :: Accessor st s a -> Entry s a -> GenericMusicGenerator st s ()
-putEntry accessor entry = modify $ (setValue accessor) entry
+putEntry accessor entry = modify $ setValue accessor entry
 
 setState :: s -> MusicGenerator s ()
 setState state' = modify (\st -> st { state = state' })
@@ -109,21 +118,20 @@ gselect stateGet stateSet accessor = do
   let st  = stateGet genstate
   let e'  = constrain e
   let sel = selector e
-  (value, st') <- io (sel st e')
+  (value, st') <- lift (sel st e')
   stateSet st'
   return value
 
-constrain :: Entry s a -> [(Double, a)]
+constrain :: Entry s a -> [(Weight, a)]
 constrain e = filter (\(_, x) -> all ($ x) (constraints e)) $ values e
 
 addConstraint :: Accessor st s a -> Constraint a -> GenericMusicGenerator st s ()
 addConstraint accessor c = do
-  st <- get
   e <- getEntry accessor
-  putEntry accessor (Entry { values      = values e
-                           , constraints = c:constraints e
-                           , selector    = selector e
-                            })
+  putEntry accessor Entry { values      = values e
+                          , constraints = c:constraints e
+                          , selector    = selector e
+                          }
 
 (??) :: Accessor GenState s a -> MusicGenerator s a
 (??) = select
@@ -153,13 +161,12 @@ genChord n =
   chord <$> (map <$> (Note <$> rand)
                  <*> (zip <$> randN n <*> randN n))
 
--- | Lift an IO operation into the 'MusicGenerator' monad.
-io :: IO a -> GenericMusicGenerator st s a
-io = liftIO
-
 -- | Runs a generator on the default state.
 runGenerator :: s -> MusicGenerator s a -> IO a
 runGenerator = runGenerator' . defaultState
+
+-- runChaosGenerator :: s -> MusicGenerator s a -> IO a
+-- runChaosGenerator = runGenerator' . chaos1
 
 -- | Runs a generator on the provided state
 runGenerator' :: st s -> GenericMusicGenerator st s a -> IO a
@@ -167,9 +174,7 @@ runGenerator' st gen = fst <$> runStateT gen st
 
 local :: (st s -> st s) -> GenericMusicGenerator st s a
                         -> GenericMusicGenerator st s a
-local f gen = do
-  st <- get
-  io $ runGenerator' (f st) gen
+local f gen = get >>= \st -> lift $ runGenerator' (f st) gen
 
 clean :: s -> MusicGenerator s a -> MusicGenerator s a
 clean s = local (const $ defaultState s)
