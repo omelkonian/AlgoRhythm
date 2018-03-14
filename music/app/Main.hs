@@ -7,10 +7,13 @@ import           Music
 import           Music.Generate
 import           Control.Monad
 
+import           Music.Generate.QuickCheck
+
 main :: IO ()
 main = do
   x   <- runGenerator () tbBlues
   mel <- runGenerator () bSolo
+  playDev 0 x
   writeToMidiFile "gen.midi" (x :=: (mel :+: ((mel><) ~> P8)))
   writeToLilypondFile "gen.ly" x
 

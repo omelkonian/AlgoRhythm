@@ -12,8 +12,13 @@ library
         Music.Operators,
         Music.Utilities,
         Music.Generate,
+<<<<<<< d80b242b02d8a1decc936ee5ceefe063bc6b2a7e
         Music.Chaos,
         Music.Vec,
+=======
+        Music.Generate.Chaos,
+        Music.Generate.QuickCheck,
+>>>>>>> Put generators in separate folder.
         Export,
         Export.MIDI,
         Export.Score
