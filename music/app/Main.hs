@@ -3,7 +3,7 @@
 module Main where
 
 import Control.Monad
-import Export         (playDev, writeToLilypondFile, writeToMidiFile)
+import Export         (playDev, writeToLilypondFile, writeToMidiFile, defaultMIDIConfig)
 import Generate
 import Generate.Chaos
 import Music
@@ -12,7 +12,7 @@ main :: IO ()
 main = do
   -- x   <- runGenerator chaos1 tbBlues
   mel <- runGenerator chaos1 bSolo
-  playDev 4 mel
+  playDev 4 defaultMIDIConfig mel
   -- writeToMidiFile "gen.midi" (x :=: (mel :+: ((mel><) ~> P8)))
   -- writeToLilypondFile "gen.ly" x
 

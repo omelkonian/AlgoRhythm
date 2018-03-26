@@ -51,7 +51,7 @@ clean s = modified (const $ chaosState s)
 playGen :: ToMusicCore a => (ChaosState n) -> MusicGenerator (ChaosState n) (Music a) -> IO ()
 playGen s music = do
   m <- runGenerator s music
-  playDev 4 m
+  playDev 4 defaultMIDIConfig m
 
 
 

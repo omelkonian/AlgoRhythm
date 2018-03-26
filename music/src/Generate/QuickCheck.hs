@@ -40,4 +40,4 @@ clean s = modified (const $ quickCheckState s)
 playGen :: ToMusicCore a => s -> MusicGenerator s (Music a) -> IO ()
 playGen s music = do
   m <- runGenerator s music
-  playDev 4 m
+  playDev 4 defaultMIDIConfig m

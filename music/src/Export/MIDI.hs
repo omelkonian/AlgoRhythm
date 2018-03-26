@@ -1,36 +1,46 @@
-module Export.MIDI (writeToMidiFile, play, playDev) where
+module Export.MIDI (
+    module Export.MIDIConfig
+  , writeToMidiFile
+  , play
+  , playDev
+) where
 
 import           Codec.Midi
 import           Control.Arrow ((>>>))
 import           Data.Ratio    ((%))
-import qualified Euterpea      as E
+import           Export.MIDIConfig
+import qualified Euterpea as E
 import           Music
 
 -- | Write `Music` to MIDI file.
-writeToMidiFile :: (ToMusicCore a) => FilePath -> Music a -> IO ()
-writeToMidiFile path = toMusicCore >>> musicToMidi >>> E.exportMidiFile path
+writeToMidiFile :: (ToMusicCore a) => FilePath -> MIDIConfig -> Music a -> IO ()
+writeToMidiFile path c = toMusicCore >>> musicToMidi c >>> E.exportMidiFile path
 
 -- | Plays `Music` to the given MIDI output device (using Euterpea under the
 --   hood).
-playDev :: (ToMusicCore a) => Int -> Music a -> IO ()
-playDev devId = toMusicCore >>> musicToE >>> E.playDev devId
+playDev :: (ToMusicCore a) => Int -> MIDIConfig -> Music a -> IO ()
+playDev devId c = toMusicCore >>> musicToE c >>> E.playDev devId
 
 -- | Plays `Music` to the standard MIDI output device.
-play :: (ToMusicCore a) => Music a -> IO ()
-play = toMusicCore >>> musicToE >>> E.play
+play :: (ToMusicCore a) => MIDIConfig -> Music a -> IO ()
+play c = toMusicCore >>> musicToE c >>> E.play
 
 -- | Converts `MusicCore` to `Codec.Midi.Midi`. Note that this is done using
 --   Euterpea's toMidi function, which does not return a Euterpea defined
 --   Midi type, but rather a Midi type from the HCodecs library.
-musicToMidi :: MusicCore -> Midi
-musicToMidi m = E.toMidi (E.perform (musicToE m))
+musicToMidi :: MIDIConfig -> MusicCore -> Midi
+musicToMidi c m = E.toMidi $ E.perform $ musicToE c m
+
+-- | Converts MusicCore to Euterpea Music1 using a MIDIConfig.
+musicToE :: MIDIConfig -> MusicCore -> E.Music1
+musicToE c m = foldr E.Modify (musicToE' m) (controlsE c)
 
 -- | Converts `MusicCore` to Euterpea Music1
-musicToE :: MusicCore -> E.Music1
-musicToE (m :+: m')            = (E.:+:) (musicToE m) (musicToE m')
-musicToE (m :=: m')            = (E.:=:) (musicToE m) (musicToE m')
-musicToE (Rest dur)            = E.rest dur
-musicToE (Note dur (p, attrs)) = noteToE dur (p, attrs)
+musicToE' :: MusicCore -> E.Music1
+musicToE' (m :+: m')            = (E.:+:) (musicToE' m) (musicToE' m')
+musicToE' (m :=: m')            = (E.:=:) (musicToE' m) (musicToE' m')
+musicToE' (Rest dur)            = E.rest dur
+musicToE' (Note dur (p, attrs)) = noteToE dur (p, attrs)
 
 -- | Converts MusicCore Note to a Euterpea Music1 Note.
 noteToE :: Duration -> FullPitch -> E.Music1

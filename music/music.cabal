@@ -19,6 +19,7 @@ library
         Generate.QuickCheck,
         Export,
         Export.MIDI,
+        Export.MIDIConfig,
         Export.Score
     build-depends:
         base >=4.7 && <5,
