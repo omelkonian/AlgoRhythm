@@ -8,8 +8,6 @@ import Generate
 import Generate.Chaos
 import Music
 
-import Data.TypeLevel.Num hiding ((*), (+), (-), (/))
-
 main :: IO ()
 main = do
   -- x   <- runGenerator chaos1 tbBlues

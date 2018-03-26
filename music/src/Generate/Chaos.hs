@@ -8,7 +8,6 @@ import Generate.Generate
 import Export
 import Control.Monad (void)
 import Control.Monad.State hiding (state)
-import Data.TypeLevel.Num hiding ((-), (+), (*), (/), mod)
 import System.IO.Unsafe
 
 chaosSelector :: Selector (ChaosState n)
@@ -70,8 +69,8 @@ playGen s music = do
 -- | Builds a ChaosState from two Vectors of the same length. This constraint
 --   is imposed since the number of variables should be equal to the number
 --   of update functions.
-buildChaos :: Vec Double n                   -- ^ Initial variable values
-           -> Vec (Vec Double n -> Double) n -- ^ Functions that calculate next variable values
+buildChaos :: Vec n Double                   -- ^ Initial variable values
+           -> Vec n (Vec n Double -> Double) -- ^ Functions that calculate next variable values
            -> ChaosState n
 buildChaos vs fs = ChaosState { variables = vs , updateFunctions = fs }
 
@@ -79,15 +78,15 @@ main' :: IO ()
 main' = void (runStateT genNextIteration chaos1)
 
 data ChaosState n =
-  ChaosState { variables       :: Vec Double n
-             , updateFunctions :: Vec (Vec Double n -> Double) n
+  ChaosState { variables       :: Vec n Double
+             , updateFunctions :: Vec n (Vec n Double -> Double)
              }
 
 chaos1 :: ChaosState D2
 chaos1 = buildChaos (0.2 :. 0.2 :. Nil) (f1 :. f2 :. Nil)
-  where f1 :: (Vec Double D2 -> Double)
+  where f1 :: (Vec D2 Double -> Double)
         f1 vs@(x:._:.Nil) = f2 vs - 0.5 * x ** 2
-        f2 :: (Vec Double D2 -> Double)
+        f2 :: (Vec D2 Double -> Double)
         f2    (x:._:.Nil) = 0.5 * x
 
 type ChaosGenerator n = StateT (ChaosState n) IO
@@ -97,6 +96,6 @@ genNextIteration = do
     s <- get
     let vs = variables s
     let fs = updateFunctions s
-    let newVs = map' (\f -> f vs) fs
+    let newVs = fmap (\f -> f vs) fs
     put (s { variables = newVs })
-    return $ toList newVs
+    return $ list newVs

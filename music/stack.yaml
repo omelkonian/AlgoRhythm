@@ -5,10 +5,8 @@ packages:
 - .
 
 extra-deps: [
-  # General
-  type-level-tf-0.2.1
   # Lilypond + MIDI
-, lilypond-1.9.0
+  lilypond-1.9.0
 , midi-0.2.2.2
 , data-default-0.7.1.1
 , event-list-0.1.2
@@ -72,6 +70,8 @@ extra-deps: [
 , unordered-containers-0.2.9.0
 , old-time-1.1.0.3
 , polyparse-1.12
+  # Vec
+, template-haskell-2.11.1.0
 ]
 
 allow-newer: true

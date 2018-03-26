@@ -12,6 +12,7 @@ library
         Music.Operators,
         Music.Utilities,
         Vec,
+        Peano,
         Generate,
         Generate.Generate,
         Generate.Chaos,
@@ -22,8 +23,8 @@ library
     build-depends:
         base >=4.7 && <5,
         midi == 0.2.*,
+        template-haskell == 2.11.1.*,
         Euterpea == 2.0.*,
-        type-level-tf == 0.2.*,
         HCodecs == 0.5.*,
         lilypond == 1.9.*,
         data-default == 0.7.*,
@@ -32,8 +33,7 @@ library
         QuickCheck,
         mtl,
         derive,
-        containers,
-        type-level-tf
+        containers
     default-language: Haskell2010
     hs-source-dirs: src
     ghc-options: -Wall
@@ -42,8 +42,7 @@ executable music-exe
     main-is: Main.hs
     build-depends:
         base >=4.7 && <5,
-        music,
-        type-level-tf
+        music
     default-language: Haskell2010
     hs-source-dirs: app
     -- ghc-options: -threaded -rtsopts -with-rtsopts=-N
@@ -51,7 +50,7 @@ executable music-exe
 test-suite music-test
     type: exitcode-stdio-1.0
     main-is: Spec.hs
-    other-modules: GenSetup, TMusic, TScore, TMidi
+    other-modules: GenSetup, TMusic, TScore, TMidi, TVec
     build-depends:
         base >=4.7 && <5,
         music,
