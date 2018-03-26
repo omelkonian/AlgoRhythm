@@ -15,14 +15,14 @@ import Music
 data Degree = I | II | III | IV | V | VI | VII
               deriving (Eq, Show, Enum, Bounded)
 
-newtype Modulation = Modulation Interval deriving (Eq)
+newtype Modulation = Modulation Interval deriving (Eq, Show)
 
 harmony :: Grammar Degree Modulation
 harmony =
   [ -- Turn-arounds
-    (I, 7, (> hn)) :-> \t -> II%:t/4 :-: V%:t/4 :-: I%:t/2
+    (I, 6, (> hn)) :-> \t -> II%:t/4 :-: V%:t/4 :-: I%:t/2
   , (I, 2, (> hn)) :-> \t -> V%:t/2 :-: I%:t/2
-  , I -| 1
+  , I -| 2
     -- TODO ++
 
     -- Modulations
@@ -33,33 +33,34 @@ harmony =
     -- TODO ++
 
     -- Tritone substitution
-  , (V, 1, always) :-> \t -> Modulation A4 |$: V%:t
+  , (V, 1, (> hn)) :-> \t -> Let (V%:t/4 :-: Modulation A4 |$: V%:t/4) (\x -> x :-: x)
     -- TODO ++
   ]
 
-interpret :: PitchClass -> Degree -> IO SemiChord
-interpret pc degree = do
-  let tonic = pc +| major :: SemiScale
-  let tone = tonic !! fromEnum degree
-  let options = [ ch
-                | chordType <- allChords
-                , let ch = tone =| chordType
-                , all (`elem` tonic) ch
-                ]
-  index <- getStdRandom $ randomR (0, length options - 1)
-  return $ options !! index
-
 instance Expand PitchClass Degree Modulation SemiChord where
+  expand pc (m :-: m') = (:-:) <$> expand pc m <*> expand pc m'
+  expand pc (Aux _ (Modulation itv) t) = expand (pc ~~> itv) t
+  expand pc (Let x f) = f <$> expand pc x
   expand pc (Prim (a, t)) = do
     ch <- pc `interpret` a
     return $ Prim (ch, t)
-  expand pc (m :-: m') = (:-:) <$> expand pc m <*> expand pc m'
-  expand pc (Aux _ (Modulation itv) t) = expand (pc ~~> itv) t
+    where
+      interpret :: PitchClass -> Degree -> IO SemiChord
+      interpret p degree = do
+        let tonic = p +| major :: SemiScale
+        let tone = tonic !! fromEnum degree
+        let options = [ ch
+                      | chordType <- allChords
+                      , let ch = tone =| chordType
+                      , all (`elem` tonic) ch
+                      ]
+        index <- getStdRandom $ randomR (0, length options - 1)
+        return $ options !! index
 
----------------------------------- Melody -------------------------------------
+---------------------------------- Melody --------------------------------------
 data NT = MQ -- Meta-rhythm
         | Q  -- Rhythm non-terminal
-        | MN -- Meta-tone
+        | MN -- Meta-note
         | N  -- Note non-terminal
         | HT -- any of [CT, L, AT]
         | CT -- chord tone
@@ -92,6 +93,8 @@ melody =
 
   , (Q, 1, (== qn)) |-> CT%:qn
 
+  , (MN, 1, (== wn)) |-> MN%:qn :-: MN%:qn :-: MN%:qn :-: MN%:qn
+
   , (MN, 72, (== qn)) |-> MN%:en :-: MN%:en
   , (MN, 22, (== qn)) |-> N%:qn
   , (MN,  5, (== qn)) |-> HT%:(en^^^) :-: HT%:(en^^^) :-: HT%:(en^^^)
@@ -115,29 +118,14 @@ melody =
   , (N,  1, (== en)) |-> AT%:en
   ]
 
+-------------------------------- Integration -----------------------------------
+
+-- | Produce concrete chords out of a harmonic structure.
 -- TODO advanced voiceleading \w configuration
 voiceLead :: Music SemiChord -> IO (Music Chord)
 voiceLead = return . fmap (\pcs -> (\p -> (p, def)) <$> pcs)
 
-type ListMusic a = [(a, Duration)]
-type ListMusicM a = [(Maybe a, Duration)]
-toListM :: Music a -> ListMusicM a
-toListM (m :+: m') = toListM m ++ toListM m'
-toListM (_ :=: _)  = error "toList: non-sequential music"
-toListM (Note d a) = [(Just a, d)]
-toListM (Rest d)   = [(Nothing, d)]
-
-toList :: Music a -> ListMusic a
-toList (m :+: m') = toList m ++ toList m'
-toList(Note d a)  = [(a, d)]
-toList (_ :=: _)  = error "toListFull: non-sequential music"
-toList (Rest _)   = error "toListFull: rest exists"
-
-fromListM :: ListMusicM a -> Music a
-fromListM ((Just a,t):ms)  = a <| t :+: fromListM ms
-fromListM ((Nothing,t):ms) = (t~~) :+: fromListM ms
-fromListM []               = (0~~)
-
+-- | Produce a concrete improvisation out of a melodic structure.
 mkSolo :: Music SemiChord -> Music NT -> IO Melody
 mkSolo chs nts = fromListM <$> go (toList chs) (toList nts)
   where
@@ -209,3 +197,23 @@ final pc t = do
     soften (p, _) = p <: [Dynamic PP]
 
 -- TODO weights for `allChords`, `mkSolo`
+
+{- Utilities -}
+type ListMusic a = [(a, Duration)]
+type ListMusicM a = [(Maybe a, Duration)]
+toListM :: Music a -> ListMusicM a
+toListM (m :+: m') = toListM m ++ toListM m'
+toListM (_ :=: _)  = error "toList: non-sequential music"
+toListM (Note d a) = [(Just a, d)]
+toListM (Rest d)   = [(Nothing, d)]
+
+toList :: Music a -> ListMusic a
+toList (m :+: m') = toList m ++ toList m'
+toList(Note d a)  = [(a, d)]
+toList (_ :=: _)  = error "toListFull: non-sequential music"
+toList (Rest _)   = error "toListFull: rest exists"
+
+fromListM :: ListMusicM a -> Music a
+fromListM ((Just a,t):ms)  = a <| t :+: fromListM ms
+fromListM ((Nothing,t):ms) = (t~~) :+: fromListM ms
+fromListM []               = (0~~)

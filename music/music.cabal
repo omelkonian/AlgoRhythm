@@ -23,6 +23,7 @@ library
         Generate.Chaos,
         Generate.QuickCheck,
         -- Grammars
+        Grammar,
         Grammar.Grammar,
         Grammar.Examples,
         Grammar.RandomUtils,
@@ -60,7 +61,7 @@ executable music-exe
 test-suite music-test
     type: exitcode-stdio-1.0
     main-is: Spec.hs
-    other-modules: GenSetup, TMusic, TScore, TMidi, TVec
+    other-modules: GenSetup, TMusic, TScore, TMidi, TVec, TGrammar
     build-depends:
         base >=4.7 && <5,
         music,

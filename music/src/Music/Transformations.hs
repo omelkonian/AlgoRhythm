@@ -20,7 +20,7 @@ import Data.Maybe    (catMaybes)
 import Music.Types
 
 -- | Operator precedence.
-infixl 5 ~>, <~
+infixl 5 ~>, <~, ~~>, <~~
 infix  3 *~
 infix  2 ##
 

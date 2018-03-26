@@ -1,6 +1,9 @@
 {-# LANGUAGE ConstraintKinds        #-}
+{-# LANGUAGE FlexibleContexts       #-}
 {-# LANGUAGE FlexibleInstances      #-}
 {-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE RankNTypes             #-}
+{-# LANGUAGE StandaloneDeriving     #-}
 module Grammar.Grammar
        ( Weight
        , Grammar, Rule (..), Head, Activation, Body, Terminal
@@ -10,6 +13,7 @@ module Grammar.Grammar
        ) where
 
 import System.Random
+import Text.Show.Functions ()
 
 import Generate (Weight)
 import Music
@@ -29,28 +33,48 @@ type Head a = (a, Weight, Activation)
 type Activation = Duration -> Bool
 type Body a meta = Duration -> Term a meta
 type Terminal a = (a, Duration)
-data Term a meta = Prim (Terminal a)           -- primitive
-                 | Term a meta :-: Term a meta -- sequence
-                 | Aux Bool meta (Term a meta) -- auxiliary modifications
-                 deriving (Eq, Show)
-            -- TODO add let + var
-            -- | Let x (a -> Term)   -- let (enables repetition)
-            -- | Var a              -- variable placeholders
 
-type Grammarly input a meta b = (Eq a, Eq meta, Expand input a meta b)
+data Term a meta = -- primitive
+                   Prim (Terminal a)
+                   -- sequence
+                   | Term a meta :-: Term a meta
+                   -- auxiliary modifications
+                   | Aux Bool meta (Term a meta)
+                   -- let (enables repetition)
+                   | Let (Term a meta) (forall b. Term b () -> Term b ())
 
+deriving instance (Show a, Show meta) => Show (Term a meta)
+
+instance (Eq a, Eq meta) => Eq (Term a meta) where
+  (Prim (a, d))  == (Prim (a', d'))   = a == a' && d == d'
+  (x :-: y)      == (x' :-: y')       = x == x' && y == y'
+  (Aux b meta t) == (Aux b' meta' t') = b == b' && meta == meta' && t == t'
+  (Let t _)      == (Let t' _)        = t == t'
+  _              == _                 = False
+
+type Grammarly input a meta b =
+  (Show a, Show meta, Eq a, Eq meta, Expand input a meta b)
+
+-- | Any metadata-carrying grammar term must be expanded to a stripped-down
+-- grammar term with no metadata (i.e. `Term a ()`), possibly producing terms of
+-- a different type `b`.
 class Expand input a meta b | input a meta -> b where
   -- | Expand meta-information.
   expand :: input -> Term a meta -> IO (Term b ())
 
-  -- | Convert to music (after expansion).
-  toMusic :: input -> Term a meta -> IO (Music b)
-  toMusic input term = do
-    expanded <- expand input term
-    go expanded
-    where go (Prim (a, t)) = return $ Note t a
-          go (t :-: t')    = (:+:) <$> toMusic () t <*> toMusic () t'
-          go (Aux _ () t)  = toMusic () t
+-- | Convert to music (after expansion).
+toMusic :: (Expand input a meta b) => input -> Term a meta -> IO (Music b)
+toMusic input term = do
+  expanded <- expand input term
+  go $ unlet expanded
+  where go (Prim (a, t)) = return $ Note t a
+        go (t :-: t')    = (:+:) <$> toMusic () t <*> toMusic () t'
+        go _             = error "toMusic: lets/aux after expansion"
+
+        unlet (Let x f)    = unlet (f x)
+        unlet (t :-: t')   = unlet t :-: unlet t'
+        unlet (Aux _ () t) = unlet t
+        unlet t            = t
 
 -- | A term with no auxiliaries can be trivially expanded.
 instance Expand input a () a where
@@ -60,11 +84,15 @@ instance Expand input a () a where
 runGrammar :: Grammarly input a meta b
            => Grammar a meta -> Terminal a -> input -> IO (Music b)
 runGrammar grammar initial input = do
-  applyRules <- fixpoint (go grammar) (Prim initial)
-  toMusic input applyRules
+  rewritten <- fixpoint (go grammar) (Prim initial)
+  toMusic input rewritten
   where
     -- | Run one term of grammar rewriting.
     go :: (Eq meta, Eq a) => Grammar a meta -> Term a meta -> IO (Term a meta)
+    -- go _ (Var x) = return $ Var x
+    go gram (Let x f) = do
+      x' <- go gram x
+      return $ Let x' f
     go gram (t :-: t') =
       (:-:) <$> go gram t <*> go gram t'
     go _ a@(Aux True _ _) =
@@ -98,7 +126,6 @@ a -| w = (a, w, always) :-> \t -> Prim (a, t)
 ($:), (|$:) :: meta -> Term a meta -> Term a meta
 ($:) = Aux False -- auxiliary symbol that allows internal rewriting
 (|$:) = Aux True -- frozen auxiliary symbol
-
 
 {- Helpers. -}
 

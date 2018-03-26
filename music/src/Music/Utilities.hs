@@ -20,7 +20,7 @@ class Abstract rep  -- type of the abstract representation
 
 -- | Covers both 'Chord' and 'Scale'.
 instance Abstract [Interval] Pitch [Pitch] where
-  instantiate p rep = [p ~~> i | i <- rep]
+  instantiate p rep = [p ~> i | i <- rep]
 
 instance Abstract [Interval] PitchClass [PitchClass] where
   instantiate p rep = [p ~~> if i - P8 > P1 then i - P8 else i | i <- rep]

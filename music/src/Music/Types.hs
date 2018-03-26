@@ -114,18 +114,6 @@ instance Foldable Music where
   foldMap f (Note _ a) = f a
   foldMap _ _          = mempty
 
--- TODO
--- instance Applicative Music where
---   pure = Note 1
---
---   (f :+: f') <*> x = (f <*> x) :+: (f' <*> x)
---   (f :=: f') <*> x = (f <*> x) :=: (f' <*> x)
---   (Note _ f) <*> x = f <$> x
---   (Rest d) <*> _ = Rest d
---
--- instance Monad Music where
---   m >>= k = join (k <$> m)
-
 -- | Core 'Music' datatype.
 type MusicCore = Music FullPitch
 
@@ -156,12 +144,6 @@ instance ToMusicCore a => ToMusicCore [a] where
   toMusicCore (m :=: m')  = toMusicCore m :=: toMusicCore m'
   toMusicCore (Note d ps) = toMusicCore $ chord $ Note d <$> ps
   toMusicCore (Rest d)    = Rest d
-
--- instance ToMusicCore Chord where
---   toMusicCore (m :+: m')  = toMusicCore m :+: toMusicCore m'
---   toMusicCore (m :=: m')  = toMusicCore m :=: toMusicCore m'
---   toMusicCore (Note d ps) = toMusicCore $ chord $ Note d <$> ps
---   toMusicCore (Rest d)    = Rest d
 
 -- Default values.
 instance Default PitchClass where
