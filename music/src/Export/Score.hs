@@ -1,13 +1,13 @@
-module Export.Score (writeToLilypondFile) where
+module Export.Score (writeToLilypondFile, splitDurations, musicToLilypond) where
 
 import           Control.Arrow                ((>>>))
 import           Data.Maybe
 import qualified Data.Music.Lilypond          as Ly
 import qualified Data.Music.Lilypond.Dynamics as LyD
-import           Data.Text                    (pack, replace, unpack)
 import           Music
 import           Text.Pretty
-
+import           Data.Text                    (replace, pack, unpack)
+import           Data.Ratio
 
 -- | Write 'Music' to Lilypond file.
 writeToLilypondFile :: (ToMusicCore a) => FilePath -> Music a -> IO ()
@@ -24,10 +24,20 @@ musicToLilypond (m :+: m') =
   Ly.sequential (musicToLilypond m) (musicToLilypond m')
 musicToLilypond (m :=: m') =
   Ly.simultaneous (musicToLilypond m) (musicToLilypond m')
-musicToLilypond (Note d m) =
-  Ly.Note (Ly.NotePitch (toLilypondPitch m) Nothing)
-    (Just $ toDuration d) (getPostModifiers m)
-musicToLilypond (Rest d  ) = Ly.Rest (Just $ toDuration d) []
+musicToLilypond (Note d m) = tiedNoteSequence (splitDurations d) m
+musicToLilypond (Rest d) = Ly.Rest (Just $ toDuration d) []
+
+tiedNoteSequence :: [Duration] -> FullPitch -> Ly.Music
+tiedNoteSequence ds m = Ly.Sequential $ map (toNote [Ly.Tie]) (init ds) ++ [toNote [] (last ds)]
+   where toNote pm d = Ly.Note (Ly.NotePitch (toLilypondPitch m) Nothing)
+                         (Just $ toDuration d) (pm ++ getPostModifiers m)
+
+-- | Splits a duration into powers of two
+splitDurations :: Duration -> [Duration]
+splitDurations d =
+  case isPowerOf2 d of
+    True  -> [d]
+    False -> splitDurations (d - 1%denominator d) ++ [(1%denominator d)]
 
 -- | Convert a 'FullPitch' to it's corresponding
 --   'Data.Music.Lilypond.Pitch'
@@ -101,3 +111,7 @@ toLilyPondDynamics d = fromJust $ lookup d m
 -- | Find a match in a structure which maps list of keys to elements
 findMatch :: Eq a => a -> [([a], b)] -> b
 findMatch el = snd . head . filter (elem el. fst)
+
+-- | Checks if a note is 2 to some power
+isPowerOf2 :: Duration -> Bool
+isPowerOf2 x = elem x [1%1,1%2,1%4,1%8,1%16,1%32]
