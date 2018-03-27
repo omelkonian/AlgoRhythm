@@ -27,7 +27,7 @@ module Music.Types
        , (<$$>), (<$$$>)
        , (%), Default(..)
        , line, chord, scale
-       , flatten, chords
+       , flatten, harmonyToMelody
        , absPitch, pitch
        ) where
 
@@ -209,11 +209,11 @@ flatten (m :=: m') = flatten m :=: flatten m'
 flatten (Note _ m) = m
 flatten (Rest d)   = Rest d
 
-chords :: Harmony -> Melody
-chords (m :+: m')  = chords m :+: chords m'
-chords (m :=: m')  = chords m :=: chords m'
-chords (Note d xs) = chord (Note d <$> xs)
-chords (Rest d)    = Rest d
+harmonyToMelody :: Harmony -> Melody
+harmonyToMelody (m :+: m')  = harmonyToMelody m :+: harmonyToMelody m'
+harmonyToMelody (m :=: m')  = harmonyToMelody m :=: harmonyToMelody m'
+harmonyToMelody (Note d xs) = chord (Note d <$> xs)
+harmonyToMelody (Rest d)    = Rest d
 
 absPitch :: Pitch -> AbsPitch
 absPitch = fromEnum

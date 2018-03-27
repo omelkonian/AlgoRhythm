@@ -8,8 +8,8 @@ module Grammar.Grammar
        ( Weight
        , Grammar, Rule (..), Head, Activation, Body, Terminal
        , Term (..), Expand (..), Grammarly
-       , runGrammar, always
-       , (-|), ($:), (|$:), (|->), (%:)
+       , runGrammar, always, (/\), (\/)
+       , (-|), (-||), ($:), (|$:), (|->), (%:)
        ) where
 
 import System.Random
@@ -110,6 +110,14 @@ runGrammar grammar initial input = do
 always :: Activation
 always = const True
 
+-- | Conjunction of activation functions.
+(/\) :: Activation -> Activation -> Activation
+(f /\ g) x = f x && g x
+
+-- | Disjunction of activation functions.
+(\/) :: Activation -> Activation -> Activation
+(f \/ g) x = f x || g x
+
 -- | Set a primitive term's duration.
 (%:) :: a -> Duration -> Term a meta
 m %: t = Prim (m, t)
@@ -121,6 +129,10 @@ a |-> b = a :-> const b
 -- | Identity rule.
 (-|) :: a -> Weight -> Rule a meta
 a -| w = (a, w, always) :-> \t -> Prim (a, t)
+
+-- | Identity rule with activation function.
+(-||) :: (a, Weight) -> Activation -> Rule a meta
+(a, w) -|| f = (a, w, f) :-> \t -> Prim (a, t)
 
 -- | Operators for auxiliary terms.
 ($:), (|$:) :: meta -> Term a meta -> Term a meta

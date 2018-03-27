@@ -1,14 +1,18 @@
 {-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE ImplicitParams        #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE PostfixOperators      #-}
 {-# LANGUAGE TypeSynonymInstances  #-}
-module Grammar.Examples where
+module Grammar.Examples
+       ( final
+       , Config (..)
+       ) where
 
 import Control.Monad (forM)
-import System.Random
 
 import Grammar.Grammar
-import Grammar.RandomUtils
+import Grammar.Utilities
+import Grammar.VoiceLeading
 import Music
 
 ---------------------------------- Harmony -------------------------------------
@@ -20,43 +24,43 @@ newtype Modulation = Modulation Interval deriving (Eq, Show)
 harmony :: Grammar Degree Modulation
 harmony =
   [ -- Turn-arounds
-    (I, 6, (> hn)) :-> \t -> II%:t/4 :-: V%:t/4 :-: I%:t/2
-  , (I, 2, (> hn)) :-> \t -> V%:t/2 :-: I%:t/2
-  , I -| 2
+    (I, 8, (> wn)) :-> \t -> Let (I%:t/2) (\x -> x :-: x)
+  , (I, 2, (> wn)) :-> \t -> I%:t/2 :-: I%:t/2
+  , (I, 6, (> hn) /\ (<= wn)) :-> \t -> II%:t/4 :-: V%:t/4 :-: I%:t/2
+  , (I, 2, (> hn) /\ (<= wn)) :-> \t -> V%:t/2 :-: I%:t/2
+  , (I, 2) -|| (<= wn)
     -- TODO ++
 
     -- Modulations
   , (V, 6, (> hn)) :-> \t -> Modulation P5 $: I%:t
-  , V -| 3
-  -- , (II, 3, (> hn)) :-> \t -> Modulation M2 $: I%:t
-  -- , II -| 7
+  , V -| 2
+  , (II, 3, (> hn)) :-> \t -> Modulation M2 $: I%:t
+  , II -| 7
     -- TODO ++
 
     -- Tritone substitution
-  , (V, 1, (> hn)) :-> \t -> Let (V%:t/4 :-: Modulation A4 |$: V%:t/4) (\x -> x :-: x)
+  , (V, 2, (> hn)) :-> \t -> Let (V%:t/4 :-: Modulation A4 |$: V%:t/4) (\x -> x :-: x)
     -- TODO ++
   ]
 
-instance Expand PitchClass Degree Modulation SemiChord where
-  expand pc (m :-: m') = (:-:) <$> expand pc m <*> expand pc m'
-  expand pc (Aux _ (Modulation itv) t) = expand (pc ~~> itv) t
-  expand pc (Let x f) = f <$> expand pc x
-  expand pc (Prim (a, t)) = do
-    ch <- pc `interpret` a
+instance Expand Config Degree Modulation SemiChord where
+  expand conf (m :-: m') = (:-:) <$> expand conf m <*> expand conf m'
+  expand conf (Let x f)  = f <$> expand conf x
+  expand conf (Aux _ (Modulation itv) t) =
+    expand (conf {basePc = basePc conf ~~> itv}) t
+  expand conf (Prim (a, t)) = do
+    ch <- conf `interpret` a
     return $ Prim (ch, t)
     where
-      interpret :: PitchClass -> Degree -> IO SemiChord
-      interpret p degree = do
-        let tonic = p +| major :: SemiScale
-        let tone = tonic !! fromEnum degree
-        let options = [ ch
-                      | chordType <- allChords
-                      , let ch = tone =| chordType
-                      , all (`elem` tonic) ch
-                      ]
-        index <- getStdRandom $ randomR (0, length options - 1)
-        return $ options !! index
-
+      interpret :: Config -> Degree -> IO SemiChord
+      interpret config degree = choose options
+        where tonic = basePc config +| baseScale config :: SemiScale
+              tone = tonic !! fromEnum degree
+              options = [ (w, ch)
+                        | (w, chordType) <- chords config
+                        , let ch = tone =| chordType
+                        , all (`elem` tonic) ch
+                        ]
 ---------------------------------- Melody --------------------------------------
 data NT = MQ -- Meta-rhythm
         | Q  -- Rhythm non-terminal
@@ -118,15 +122,8 @@ melody =
   , (N,  1, (== en)) |-> AT%:en
   ]
 
--------------------------------- Integration -----------------------------------
-
--- | Produce concrete chords out of a harmonic structure.
--- TODO advanced voiceleading \w configuration
-voiceLead :: Music SemiChord -> IO (Music Chord)
-voiceLead = return . fmap (\pcs -> (\p -> (p, def)) <$> pcs)
-
 -- | Produce a concrete improvisation out of a melodic structure.
-mkSolo :: Music SemiChord -> Music NT -> IO Melody
+mkSolo :: (?config :: Config) => Music SemiChord -> Music NT -> IO Melody
 mkSolo chs nts = fromListM <$> go (toList chs) (toList nts)
   where
     go :: ListMusic SemiChord -> ListMusic NT -> IO (ListMusicM Pitch)
@@ -140,17 +137,8 @@ mkSolo chs nts = fromListM <$> go (toList chs) (toList nts)
     mkPitch :: Duration -> [PitchClass] -> IO (Maybe Pitch, Duration)
     mkPitch t ps = do
       p <- oneOf ps
-      oct <- choose [(1, Oct3), (10,Oct4), (10, Oct5), (1, Oct6)]
+      oct <- choose (octaves ?config)
       return (Just $ p#oct, t)
-
-    distancePc :: PitchClass -> PitchClass -> Interval
-    distancePc pc pc' = distanceP (pc#oct) (pc#(oct + offset))
-      where oct = Oct4
-            offset | pc > pc'  = 1
-                   | otherwise = 0
-
-    distanceP :: Pitch -> Pitch -> Interval
-    distanceP p p' = P8 - toEnum (fromEnum $ p - p')
 
     toIntervals :: SemiChord -> AbstractChord
     toIntervals ch = P1 : (uncurry distancePc <$> zip ch (tail ch))
@@ -165,14 +153,14 @@ mkSolo chs nts = fromListM <$> go (toList chs) (toList nts)
         CT -> mkPitch t ch
         AT -> mkPitch t (((~> Mi2) <$> ch) ++ ((<~ Mi2) <$> ch))
         ST -> do
-          let scales = [ sc
-                       | sc <- allScales
-                       , all (`elem` sc) (toIntervals ch)
-                       ]
-          if null scales then
+          let scales' = [ (w, sc)
+                        | (w, sc) <- scales ?config
+                        , all (`elem` sc) (toIntervals ch)
+                        ]
+          if null scales' then
             interpretNT ch (CT, t)
           else do
-            sc <- oneOf scales
+            sc <- choose scales'
             mkPitch t (head ch +| sc)
         L -> interpretNT ch (ST, t)
         _  -> error $ "intrepret: incomplete grammar rewrite " ++ show nt ++ " <| " ++ show t
@@ -185,35 +173,25 @@ mkSolo chs nts = fromListM <$> go (toList chs) (toList nts)
           (nt@(_, d'):ntz') ->
             let (ntz'', rest) = takeTime ntz' (d - d')
             in  (nt:ntz'', rest)
+-------------------------------- Integration -----------------------------------
 
-final :: PitchClass -> Duration -> IO MusicCore
-final pc t = do
-  harmonicStructure <- runGrammar harmony (I, t) pc
+data Config = Config
+  { baseOct   :: Octave
+  , basePc    :: PitchClass
+  , baseScale :: AbstractScale
+  , chords    :: [(Weight, AbstractChord)]
+  , scales    :: [(Weight, AbstractScale)]
+  , octaves   :: [(Weight, Octave)]
+  }
+
+final :: (?config :: Config) => Duration -> IO MusicCore
+final t = do
+  let ?baseOctave = baseOct ?config
+  harmonicStructure <- runGrammar harmony (I, t) ?config
   melodicStructure <- runGrammar melody (MQ, t) ()
   background <- voiceLead harmonicStructure
   foreground <- mkSolo harmonicStructure melodicStructure
-  return $ (soften <$> toMusicCore background) :=: toMusicCore foreground
+  return $ (soften <$> toMusicCore background) :=: (toMusicCore foreground <~ P8)
+  -- return (soften <$> toMusicCore background)
   where
     soften (p, _) = p <: [Dynamic PP]
-
--- TODO weights for `allChords`, `mkSolo`
-
-{- Utilities -}
-type ListMusic a = [(a, Duration)]
-type ListMusicM a = [(Maybe a, Duration)]
-toListM :: Music a -> ListMusicM a
-toListM (m :+: m') = toListM m ++ toListM m'
-toListM (_ :=: _)  = error "toList: non-sequential music"
-toListM (Note d a) = [(Just a, d)]
-toListM (Rest d)   = [(Nothing, d)]
-
-toList :: Music a -> ListMusic a
-toList (m :+: m') = toList m ++ toList m'
-toList(Note d a)  = [(a, d)]
-toList (_ :=: _)  = error "toListFull: non-sequential music"
-toList (Rest _)   = error "toListFull: rest exists"
-
-fromListM :: ListMusicM a -> Music a
-fromListM ((Just a,t):ms)  = a <| t :+: fromListM ms
-fromListM ((Nothing,t):ms) = (t~~) :+: fromListM ms
-fromListM []               = (0~~)
