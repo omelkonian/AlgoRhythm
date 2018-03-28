@@ -5,10 +5,10 @@
 {-# LANGUAGE TypeSynonymInstances  #-}
 module Grammar.Examples
        ( final
-       , Config (..)
+       , Config (..), defConfig
        ) where
 
-import Control.Monad (forM)
+import Control.Arrow (first)
 
 import Grammar.Grammar
 import Grammar.Utilities
@@ -32,14 +32,14 @@ harmony =
     -- TODO ++
 
     -- Modulations
-  , (V, 6, (> hn)) :-> \t -> Modulation P5 $: I%:t
-  , V -| 2
-  , (II, 3, (> hn)) :-> \t -> Modulation M2 $: I%:t
-  , II -| 7
+  , (V, 5, (> hn)) :-> \t -> Modulation P5 $: I%:t
+  , V -| 3
+  -- , (II, 2, (> hn)) :-> \t -> Modulation M2 |$: I%:t
+  -- , II -| 8
     -- TODO ++
 
     -- Tritone substitution
-  , (V, 2, (> hn)) :-> \t -> Let (V%:t/4 :-: Modulation A4 |$: V%:t/4) (\x -> x :-: x)
+  -- , (V, 2, (> hn)) :-> \t -> Let (V%:t/4 :-: Modulation A4 |$: V%:t/4) (\x -> x :-: x)
     -- TODO ++
   ]
 
@@ -111,59 +111,78 @@ melody =
 
   , (N, 50, (== qn)) |-> CT%:qn
   , (N, 50, (== qn)) |-> ST%:qn
-  , (N, 25, (== qn)) |-> R%:qn
+  -- , (N, 25, (== qn)) |-> R%:qn
+  , (N, 45, (== qn)) |-> R%:qn
   , (N, 20, (== qn)) |-> L%:qn
   , (N,  1, (== qn)) |-> AT%:qn
 
   , (N, 40, (== en)) |-> CT%:en
   , (N, 40, (== en)) |-> ST%:en
   , (N, 20, (== en)) |-> L%:en
-  , (N, 10, (== en)) |-> R%:en
+  -- , (N, 10, (== en)) |-> R%:en
+  , (N, 20, (== en)) |-> R%:en
   , (N,  1, (== en)) |-> AT%:en
   ]
 
 -- | Produce a concrete improvisation out of a melodic structure.
 mkSolo :: (?config :: Config) => Music SemiChord -> Music NT -> IO Melody
-mkSolo chs nts = fromListM <$> go (toList chs) (toList nts)
+mkSolo chs nts =
+  fromListM <$> go Nothing [] (synchronize (toList chs) (toList nts))
   where
-    go :: ListMusic SemiChord -> ListMusic NT -> IO (ListMusicM Pitch)
-    go [] _ = return []
-    go _ [] = return []
-    go ((ch, t):back) front = do
-      let (ps', front') = takeTime front t
-      (++) <$> forM ps' (interpretNT ch)
-           <*> go back front'
-
-    mkPitch :: Duration -> [PitchClass] -> IO (Maybe Pitch, Duration)
-    mkPitch t ps = do
-      p <- oneOf ps
-      oct <- choose (octaves ?config)
-      return (Just $ p#oct, t)
-
-    toIntervals :: SemiChord -> AbstractChord
-    toIntervals ch = P1 : (uncurry distancePc <$> zip ch (tail ch))
-
-    interpretNT :: SemiChord -> (NT, Duration) -> IO (Maybe Pitch, Duration)
-    interpretNT ch (nt, t) =
+    go :: Maybe Pitch -> [Duration] -> ListMusic (SemiChord, NT) -> IO (ListMusicM Pitch)
+    go _ _ [] = return []
+    go prevP approach (((ch, nt), t):rest) =
       case nt of
-        R -> return (Nothing, t)
         HT -> do
-          nt' <- oneOf [CT, L, AT] -- TODO weights
-          interpretNT ch (nt', t)
-        CT -> mkPitch t ch
-        AT -> mkPitch t (((~> Mi2) <$> ch) ++ ((<~ Mi2) <$> ch))
-        ST -> do
-          let scales' = [ (w, sc)
-                        | (w, sc) <- scales ?config
-                        , all (`elem` sc) (toIntervals ch)
-                        ]
-          if null scales' then
-            interpretNT ch (CT, t)
-          else do
-            sc <- choose scales'
-            mkPitch t (head ch +| sc)
-        L -> interpretNT ch (ST, t)
+          nt' <- choose [(5, CT), (3, AT), (2, L)]
+          go prevP approach (((ch, nt'), t):rest)
+        AT -> if null rest then return [] else go prevP (approach ++ [t]) rest
+        _  -> do m <- interpretNT prevP approach ch nt t
+                 (++) <$> pure m <*> go (fst $ last m) [] rest
+
+    interpretNT :: Maybe Pitch -- ^ previous pitch
+                -> [Duration]  -- ^ approach tones
+                -> SemiChord   -- ^ harmonic context
+                -> NT          -- ^ current tone characteristic
+                -> Duration    -- ^ current duration
+                -> IO (ListMusicM Pitch)
+    interpretNT prevP approach ch nt t =
+      case nt of
+        R -> return $ (,) Nothing <$> (t : approach)
+        CT -> mkPitch prevP approach t ch
+        ST ->
+          let scales' = [(w, sc) | (w, sc) <- scales ?config, all (`elem` sc) (toIntervals ch)]
+          in  if null scales'
+              then interpretNT prevP approach ch CT t
+              else do sc <- choose scales'
+                      mkPitch prevP approach t (head ch +| sc)
+        L -> let colors = colorTones ch
+             in  if null colors
+                 then interpretNT prevP approach ch CT t
+                 else mkPitch prevP approach t colors
         _  -> error $ "intrepret: incomplete grammar rewrite " ++ show nt ++ " <| " ++ show t
+
+    mkPitch :: Maybe Pitch -> [Duration] -> Duration -> [PitchClass] -> IO (ListMusicM Pitch)
+    mkPitch prevP approach t pcs =
+      let ps = [(pc#oct, w) | pc <- pcs, (w, oct) <- octaves ?config] :: [(Pitch, Weight)]
+          setWeight (p', w') = w' * 1.0 / fromIntegral (pitchDistanceM prevP p')
+      in  fst <$> chooseWith setWeight ps >>= approachPitch approach prevP t
+
+    approachPitch :: [Duration] -> Maybe Pitch -> Duration -> Pitch -> IO (ListMusicM Pitch)
+    approachPitch approach prevP t p = reverse <$> oneOf [move dir | dir <- directions]
+      where
+        move dir = first Just <$> zip (iterate (`dir` Mi2) p) (t : approach)
+        directions = case prevP of
+          Just p' -> if p' > p then [(<~)] else [(~>)]
+          Nothing -> [(~>), (<~)]
+
+    -- | Synchronize the harmonic background with the melodic foreground.
+    synchronize :: ListMusic SemiChord -> ListMusic NT -> ListMusic (SemiChord, NT)
+    synchronize [] _  = []
+    synchronize _  [] = []
+    synchronize ((ch, t):back) front =
+      let (ps', front') = takeTime front t
+      in  [((ch, p'), t') | (p', t') <- ps' ] ++ synchronize back front'
 
     takeTime :: ListMusic NT -> Duration -> (ListMusic NT, ListMusic NT)
     takeTime ntz d
@@ -173,7 +192,30 @@ mkSolo chs nts = fromListM <$> go (toList chs) (toList nts)
           (nt@(_, d'):ntz') ->
             let (ntz'', rest) = takeTime ntz' (d - d')
             in  (nt:ntz'', rest)
+
+    -- | Extracts the color tones of a chord.
+    colorTones :: SemiChord -> [PitchClass]
+    colorTones (p:ps) = filter (\p' -> distancePc p p' `elem` colorIntervals) ps
+      where colorIntervals = [M3, Mi3, Mi7, M7, Mi9, M9, M13, Mi13]
+    colorTones [] = []
+
+    toIntervals :: SemiChord -> AbstractChord
+    toIntervals ch = P1 : (uncurry distancePc <$> zip ch (tail ch))
+
 -------------------------------- Integration -----------------------------------
+
+final :: (?config :: Config) => Duration -> IO MusicCore
+final t = do
+  let ?baseOctave = baseOct ?config
+  harmonicStructure <- runGrammar harmony (I, t) ?config
+  melodicStructure <- runGrammar melody (MQ, t) ()
+  background <- voiceLead harmonicStructure
+  foreground <- mkSolo harmonicStructure melodicStructure
+  return $ (soften <$> toMusicCore background) :=:
+           (soften' <$> toMusicCore foreground ~> P8)
+  where
+    soften (p, _) = p <: [Dynamic PPPP]
+    soften' (p, _) = p <: [Dynamic P]
 
 data Config = Config
   { baseOct   :: Octave
@@ -184,14 +226,12 @@ data Config = Config
   , octaves   :: [(Weight, Octave)]
   }
 
-final :: (?config :: Config) => Duration -> IO MusicCore
-final t = do
-  let ?baseOctave = baseOct ?config
-  harmonicStructure <- runGrammar harmony (I, t) ?config
-  melodicStructure <- runGrammar melody (MQ, t) ()
-  background <- voiceLead harmonicStructure
-  foreground <- mkSolo harmonicStructure melodicStructure
-  return $ (soften <$> toMusicCore background) :=: (toMusicCore foreground <~ P8)
-  -- return (soften <$> toMusicCore background)
-  where
-    soften (p, _) = p <: [Dynamic PP]
+defConfig :: Config
+defConfig = Config
+  { baseOct = def
+  , basePc  = def
+  , baseScale = major
+  , chords = equally allChords
+  , scales = equally allScales
+  , octaves = equally allOctaves
+  }

@@ -1,10 +1,19 @@
 {-# LANGUAGE PostfixOperators #-}
 module Grammar.Utilities where
 
-import System.Random
 import Music
+import System.Random
 
 -- Random helper functions.
+(<|>) :: a -> a -> IO a
+x <|> y = oneOf [x, y]
+
+(<||>) :: IO a -> IO a -> IO a
+x' <||> y' = do
+  x <- x'
+  y <- y'
+  x <|> y
+
 oneOf :: [a] -> IO a
 oneOf = choose . fmap (\a -> (1, a))
 
@@ -24,6 +33,9 @@ pick n ((w, a):es) =
   else
     pick (n-w) es
 pick _ _ = error "pick: empty list"
+
+equally :: [a] -> [(Double, a)]
+equally = zip (repeat 1.0)
 
 -- Convertion from/to lists.
 type ListMusic a = [(a, Duration)]
@@ -55,17 +67,15 @@ fromListM []               = (0~~)
 chordDistance :: Chord -> Chord -> Int
 chordDistance c c' = sum $ uncurry pitchDistance <$> zip c c'
 
-chordDistanceI :: Chord -> Chord -> Interval
-chordDistanceI c = toEnum . chordDistance c
+-- chordDistanceI :: Chord -> Chord -> Interval
+-- chordDistanceI c = toEnum . chordDistance c
 
 pitchDistance :: Pitch -> Pitch -> Int
 pitchDistance p p' = abs $ fromEnum p - fromEnum p'
 
-pitchDistanceI :: Pitch -> Pitch -> Interval
-pitchDistanceI p = toEnum . pitchDistance p
+pitchDistanceM :: Maybe Pitch -> Pitch -> Int
+pitchDistanceM Nothing  = const 1
+pitchDistanceM (Just p) = pitchDistance p
 
 distancePc :: PitchClass -> PitchClass -> Interval
-distancePc pc pc' = pitchDistanceI (pc#oct) (pc#(oct + offset))
-  where oct = Oct4
-        offset | pc > pc'  = 1
-               | otherwise = 0
+distancePc pc pc' = toEnum $ abs $ fromEnum pc - fromEnum pc'

@@ -15,6 +15,10 @@ i, ii, iii, iv, v, vi, vii :: Int
 cb, db, eb, fb, gb, bb :: PitchClass
 cb = B ; db = Cs ; eb = Ds; fb = E; gb = Fs; bb = As
 
+-- Octaves
+allOctaves :: [Octave]
+allOctaves = enumFrom Oct0
+
 ---------------------------------- Durations -----------------------------------
 
 -- Basic.
@@ -35,7 +39,7 @@ dot = (^.)
 allChords =
   [ maj, mi, dim, aug, sus4, d7sus4, maj6, m6, maj7, m7, d7, dim7, m7b5
   , maj9, m9, d9, d7b5, d7s5, d7b9, d7s9, d7b5b9, d7b5s9, d7s5b9, d7s5s9
-  ]
+  ] :: [AbstractChord]
 
 -- Triads
 maj = [P1, M3, P5]
@@ -74,7 +78,7 @@ allScales =
   , locrian, minor, harmonicMinor, melodicMinor, pentatonicMinor, blues
   , bebopDominant, bebopDorian, bebopMajor, bebopMelodicMinor, bebopHarmonicMinor
   , altered, wholeTone, halfDiminished, flamenco
-  ]
+  ] :: [AbstractScale]
 
 -- Major scales.
 major = [P1, M2, M3, P4, P5, M6, M7]
