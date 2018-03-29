@@ -1,6 +1,7 @@
 {-# LANGUAGE PostfixOperators #-}
 module Grammar.Utilities where
 
+import Control.Arrow (first)
 import Music
 import System.Random
 
@@ -28,14 +29,16 @@ choose items = do
 
 pick :: Double -> [(Double, a)] -> a
 pick n ((w, a):es) =
-  if n <= w then
-    a
-  else
-    pick (n-w) es
+  if n <= w || null es
+  then a
+  else pick (n-w) es
 pick _ _ = error "pick: empty list"
 
 equally :: [a] -> [(Double, a)]
 equally = zip (repeat 1.0)
+
+normally :: [(Double, a)] -> [(Double, a)]
+normally xs = first (/ sum (map fst xs)) <$> xs
 
 -- Convertion from/to lists.
 type ListMusic a = [(a, Duration)]
@@ -66,9 +69,6 @@ fromListM []               = (0~~)
 -- Music distances
 chordDistance :: Chord -> Chord -> Int
 chordDistance c c' = sum $ uncurry pitchDistance <$> zip c c'
-
--- chordDistanceI :: Chord -> Chord -> Interval
--- chordDistanceI c = toEnum . chordDistance c
 
 pitchDistance :: Pitch -> Pitch -> Int
 pitchDistance p p' = abs $ fromEnum p - fromEnum p'

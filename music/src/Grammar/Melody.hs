@@ -1,67 +1,18 @@
-{-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE ImplicitParams        #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE PostfixOperators      #-}
-{-# LANGUAGE TypeSynonymInstances  #-}
-module Grammar.Examples
-       ( final
-       , Config (..), defConfig
+module Grammar.Melody
+       ( MelodyConfig (..), defMelodyConfig
+       , melody, mkSolo
+       , NT (..)
        ) where
 
 import Control.Arrow (first)
 
-import Grammar.Grammar
+import Grammar.Types
 import Grammar.Utilities
-import Grammar.VoiceLeading
 import Music
 
----------------------------------- Harmony -------------------------------------
-data Degree = I | II | III | IV | V | VI | VII
-              deriving (Eq, Show, Enum, Bounded)
-
-newtype Modulation = Modulation Interval deriving (Eq, Show)
-
-harmony :: Grammar Degree Modulation
-harmony =
-  [ -- Turn-arounds
-    (I, 8, (> wn)) :-> \t -> Let (I%:t/2) (\x -> x :-: x)
-  , (I, 2, (> wn)) :-> \t -> I%:t/2 :-: I%:t/2
-  , (I, 6, (> hn) /\ (<= wn)) :-> \t -> II%:t/4 :-: V%:t/4 :-: I%:t/2
-  , (I, 2, (> hn) /\ (<= wn)) :-> \t -> V%:t/2 :-: I%:t/2
-  , (I, 2) -|| (<= wn)
-    -- TODO ++
-
-    -- Modulations
-  , (V, 5, (> hn)) :-> \t -> Modulation P5 $: I%:t
-  , V -| 3
-  -- , (II, 2, (> hn)) :-> \t -> Modulation M2 |$: I%:t
-  -- , II -| 8
-    -- TODO ++
-
-    -- Tritone substitution
-  -- , (V, 2, (> hn)) :-> \t -> Let (V%:t/4 :-: Modulation A4 |$: V%:t/4) (\x -> x :-: x)
-    -- TODO ++
-  ]
-
-instance Expand Config Degree Modulation SemiChord where
-  expand conf (m :-: m') = (:-:) <$> expand conf m <*> expand conf m'
-  expand conf (Let x f)  = f <$> expand conf x
-  expand conf (Aux _ (Modulation itv) t) =
-    expand (conf {basePc = basePc conf ~~> itv}) t
-  expand conf (Prim (a, t)) = do
-    ch <- conf `interpret` a
-    return $ Prim (ch, t)
-    where
-      interpret :: Config -> Degree -> IO SemiChord
-      interpret config degree = choose options
-        where tonic = basePc config +| baseScale config :: SemiScale
-              tone = tonic !! fromEnum degree
-              options = [ (w, ch)
-                        | (w, chordType) <- chords config
-                        , let ch = tone =| chordType
-                        , all (`elem` tonic) ch
-                        ]
----------------------------------- Melody --------------------------------------
+-- | Melodic (non)-terminal symbols.
 data NT = MQ -- Meta-rhythm
         | Q  -- Rhythm non-terminal
         | MN -- Meta-note
@@ -74,6 +25,7 @@ data NT = MQ -- Meta-rhythm
         | R  -- rest
         deriving (Eq, Show)
 
+-- | Grammar for melodic lines.
 melody :: Grammar NT ()
 melody =
   [ -- Rhythm { expand MQ(*) to multiple Q(wn), Q(hn) and Q(qn) }
@@ -125,7 +77,7 @@ melody =
   ]
 
 -- | Produce a concrete improvisation out of a melodic structure.
-mkSolo :: (?config :: Config) => Music SemiChord -> Music NT -> IO Melody
+mkSolo :: (?melodyConfig :: MelodyConfig) => Music SemiChord -> Music NT -> IO Melody
 mkSolo chs nts =
   fromListM <$> go Nothing [] (synchronize (toList chs) (toList nts))
   where
@@ -151,7 +103,7 @@ mkSolo chs nts =
         R -> return $ (,) Nothing <$> (t : approach)
         CT -> mkPitch prevP approach t ch
         ST ->
-          let scales' = [(w, sc) | (w, sc) <- scales ?config, all (`elem` sc) (toIntervals ch)]
+          let scales' = [(w, sc) | (w, sc) <- scales ?melodyConfig, all (`elem` sc) (toIntervals ch)]
           in  if null scales'
               then interpretNT prevP approach ch CT t
               else do sc <- choose scales'
@@ -164,9 +116,17 @@ mkSolo chs nts =
 
     mkPitch :: Maybe Pitch -> [Duration] -> Duration -> [PitchClass] -> IO (ListMusicM Pitch)
     mkPitch prevP approach t pcs =
-      let ps = [(pc#oct, w) | pc <- pcs, (w, oct) <- octaves ?config] :: [(Pitch, Weight)]
-          setWeight (p', w') = w' * 1.0 / fromIntegral (pitchDistanceM prevP p')
-      in  fst <$> chooseWith setWeight ps >>= approachPitch approach prevP t
+      -- do pc <- choose $ equally pcs
+      --    oct <- choose (octaves ?melodyConfig)
+      --    approachPitch approach prevP t (pc#oct)
+      let ps = [(pc#oct, w) | pc <- pcs, (w, oct) <- normally $ octaves ?melodyConfig]
+          setWeight (p', w') =
+            -- w'
+            -- w' - fromIntegral (pitchDistanceM prevP p')
+            -- w' * 1.0 / fromIntegral (pitchDistanceM prevP p')
+            w' * (1.0 - (fromIntegral (pitchDistanceM prevP p') / 12.0))
+      in  (fst <$> chooseWith setWeight ps) >>= approachPitch approach prevP t
+
 
     approachPitch :: [Duration] -> Maybe Pitch -> Duration -> Pitch -> IO (ListMusicM Pitch)
     approachPitch approach prevP t p = reverse <$> oneOf [move dir | dir <- directions]
@@ -202,36 +162,14 @@ mkSolo chs nts =
     toIntervals :: SemiChord -> AbstractChord
     toIntervals ch = P1 : (uncurry distancePc <$> zip ch (tail ch))
 
--------------------------------- Integration -----------------------------------
-
-final :: (?config :: Config) => Duration -> IO MusicCore
-final t = do
-  let ?baseOctave = baseOct ?config
-  harmonicStructure <- runGrammar harmony (I, t) ?config
-  melodicStructure <- runGrammar melody (MQ, t) ()
-  background <- voiceLead harmonicStructure
-  foreground <- mkSolo harmonicStructure melodicStructure
-  return $ (soften <$> toMusicCore background) :=:
-           (soften' <$> toMusicCore foreground ~> P8)
-  where
-    soften (p, _) = p <: [Dynamic PPPP]
-    soften' (p, _) = p <: [Dynamic P]
-
-data Config = Config
-  { baseOct   :: Octave
-  , basePc    :: PitchClass
-  , baseScale :: AbstractScale
-  , chords    :: [(Weight, AbstractChord)]
-  , scales    :: [(Weight, AbstractScale)]
+-- | Configuration for melody.
+data MelodyConfig = MelodyConfig
+  { scales    :: [(Weight, AbstractScale)]
   , octaves   :: [(Weight, Octave)]
   }
 
-defConfig :: Config
-defConfig = Config
-  { baseOct = def
-  , basePc  = def
-  , baseScale = major
-  , chords = equally allChords
-  , scales = equally allScales
+defMelodyConfig :: MelodyConfig
+defMelodyConfig = MelodyConfig
+  { scales = equally allScales
   , octaves = equally allOctaves
   }

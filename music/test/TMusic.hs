@@ -22,7 +22,11 @@ musicTests = testGroup "Music"
           in  foldMap f (line [C#4<|qn, D#2<|wn]) @?= [C#4, D#2]
       ]
   , testGroup "Transpose"
-      [ testCase "a note" $
+      [ testCase "a pitch class" $
+          C ~> M3 @?= E
+      , testCase "a pitch" $
+          C#4 ~> M7 @?= B#4
+      , testCase "a note" $
           C#4 <|hn ~> M3 @?= E#4<|hn
       , testCase "a chord" $
           let a  = chord $ C#4=|maj <|| def

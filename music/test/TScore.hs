@@ -18,7 +18,7 @@ scoreTests = testGroup "Score"
   [ testCase "successfully write to file" $
       let res = do let f = "test.ly"
                    let ?config = defConfig
-                   m <- final (4 * wn) -- TODO larger pieces eat up RAM :(
+                   m <- final (2 * wn) -- TODO larger pieces eat up RAM :(
                    _ <- writeToLilypondFile f m
                    doesFileExist f
       in  unsafePerformIO res @?= True,

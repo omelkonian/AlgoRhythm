@@ -192,8 +192,8 @@ class (Eq a, Enum a, Bounded a) => BoundEnum a where
 
   -- | Cycle n-times forward.
   moveN_ :: Eq a => Int -> a -> a
-  moveN_ n a | n < 0     = iterate next_ a !! abs n
-             | otherwise = iterate prev_ a !! n
+  moveN_ n a | n < 0     = iterate prev_ a !! abs n
+             | otherwise = iterate next_ a !! n
 
 instance (Eq a, Enum a, Bounded a) => BoundEnum a where
 

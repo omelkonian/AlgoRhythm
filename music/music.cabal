@@ -24,10 +24,13 @@ library
         Generate.QuickCheck,
         -- Grammars
         Grammar,
-        Grammar.Grammar,
-        Grammar.Examples,
+        Grammar.Types,
         Grammar.Utilities,
+        Grammar.Harmony,
         Grammar.VoiceLeading,
+        Grammar.Melody,
+        Grammar.Integration,
+        Grammar.Tabla,
         -- Utilities
         Utils.Vec,
         Utils.Peano

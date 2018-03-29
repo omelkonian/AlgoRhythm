@@ -4,7 +4,7 @@
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE RankNTypes             #-}
 {-# LANGUAGE StandaloneDeriving     #-}
-module Grammar.Grammar
+module Grammar.Types
        ( Weight
        , Grammar, Rule (..), Head, Activation, Body, Terminal
        , Term (..), Expand (..), Grammarly
