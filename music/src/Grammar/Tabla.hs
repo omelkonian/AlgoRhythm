@@ -45,11 +45,11 @@ instance ToMusicCore TablaNote where
                     Noop -> []
                     _    -> error "Incomplete grammar rewrite"
 
-(|-->) :: a -> [a] -> Rule a meta
+(|-->) :: a -> [a] -> Rule meta a
 x |--> xs = (x, 1, always) |-> foldl1 (:-:) (map (%: qn) xs)
 
 -- | Grammar for tabla improvisation.
-tabla :: Grammar TablaNote ()
+tabla :: Grammar () TablaNote
 tabla =
   [ -- Rhythm { expand MQ(*) to multiple Q(wn), Q(hn) and Q(qn) }
     S |--> [TE1, XI]

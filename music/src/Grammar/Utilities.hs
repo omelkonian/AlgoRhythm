@@ -50,8 +50,7 @@ toList (_ :=: _)  = error "toList: non-sequential music"
 toList (Rest _)   = error "toList: rest exists"
 
 fromList :: ListMusic a -> Music a
-fromList ((a,t):ms) = a <| t :+: fromList ms
-fromList []         = (0~~)
+fromList = line . fmap (uncurry (<|))
 
 type ListMusicM a = [(Maybe a, Duration)]
 
@@ -62,9 +61,9 @@ toListM (Note d a) = [(Just a, d)]
 toListM (Rest d)   = [(Nothing, d)]
 
 fromListM :: ListMusicM a -> Music a
-fromListM ((Just a,t):ms)  = a <| t :+: fromListM ms
-fromListM ((Nothing,t):ms) = (t~~) :+: fromListM ms
-fromListM []               = (0~~)
+fromListM = line . fmap f
+  where f (Just a, t) = a <| t
+        f (Nothing, t) = (t~~)
 
 -- Music distances
 chordDistance :: Chord -> Chord -> Int

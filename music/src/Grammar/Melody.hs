@@ -26,7 +26,7 @@ data NT = MQ -- Meta-rhythm
         deriving (Eq, Show)
 
 -- | Grammar for melodic lines.
-melody :: Grammar NT ()
+melody :: Grammar () NT
 melody =
   [ -- Rhythm { expand MQ(*) to multiple Q(wn), Q(hn) and Q(qn) }
     (MQ, 1, (== 0))      |-> R%:0

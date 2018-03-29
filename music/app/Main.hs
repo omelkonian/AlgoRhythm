@@ -10,7 +10,7 @@ main :: IO ()
 main = do
   let ?harmonyConfig = HarmonyConfig
         { basePc  = Gs
-        , baseOct = Oct3
+        , baseOct = Oct4
         , baseScale = harmonicMinor
         , chords  =
             [ (10, maj), (10, mi)
@@ -35,20 +35,18 @@ main = do
             ]
         , octaves = [(1, Oct2), (5, Oct3), (15, Oct4), (5, Oct5), (1, Oct6)]
         }
-  -- cp <- final (8 * wn)
-  -- let midiConfig = MIDIConfig (3%5) HammondOrgan
+  cp <- final (8 * wn)
+  let midiConfig = MIDIConfig (4%5) HammondOrgan
   -- writeToMidiFile "cp.midi" midiConfig cp
   -- putStrLn "Wrote to MIDI."
   -- writeToLilypondFile "cp.ly" cp
   -- putStrLn "Wrote to Lilypond"
-  -- playDev 4 midiConfig (2 ## cp)
-  tab <- tablaTest
-  writeToMidiFile "tablas.midi" defaultMIDIConfig tab
-  putStrLn "Wrote to MIDI."
-  -- playDev 4 defaultMIDIConfig tab
-  -- putStrLn "Playback finished."
+  playDev 4 midiConfig (2 ## cp)
+  putStrLn "Playback finished"
 
-
+  -- tab <- tablaTest
+  -- writeToMidiFile "tablas.midi" defaultMIDIConfig tab
+  -- putStrLn "Wrote to MIDI."
 
   -- writeToLilypondFile "out.ly" small
   -- putStrLn (show $ musicToLilypond small)

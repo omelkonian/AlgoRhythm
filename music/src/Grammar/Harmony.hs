@@ -2,8 +2,8 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 module Grammar.Harmony
        ( HarmonyConfig (..), defHarmonyConfig
-       , harmony
-       , Degree (..)
+       , harmony, interpret
+       , Degree (..), Modulation (..)
        ) where
 
 import Grammar.Types
@@ -18,7 +18,7 @@ data Degree = I | II | III | IV | V | VI | VII
 newtype Modulation = Modulation Interval deriving (Eq, Show)
 
 -- | Grammar for harmonic structures.
-harmony :: Grammar Degree Modulation
+harmony :: Grammar Modulation Degree
 harmony =
   [ -- Turn-arounds
     (I, 8, (> wn)) :-> \t -> Let (I%:t/2) (\x -> x :-: x)
@@ -49,16 +49,17 @@ instance Expand HarmonyConfig Degree Modulation SemiChord where
   expand conf (Prim (a, t)) = do
     ch <- conf `interpret` a
     return $ Prim (ch, t)
-    where
-      interpret :: HarmonyConfig -> Degree -> IO SemiChord
-      interpret config degree = choose options
-        where tonic = basePc config +| baseScale config :: SemiScale
-              tone = tonic !! fromEnum degree
-              options = [ (w, ch)
-                        | (w, chordType) <- chords config
-                        , let ch = tone =| chordType
-                        , all (`elem` tonic) ch
-                        ]
+
+-- | Interpret a degree as a 'SemiChord' on a given harmonic context.
+interpret :: HarmonyConfig -> Degree -> IO SemiChord
+interpret config degree = choose options
+  where tonic = basePc config +| baseScale config :: SemiScale
+        tone = tonic !! fromEnum degree
+        options = [ (w, ch)
+                  | (w, chordType) <- chords config
+                  , let ch = tone =| chordType
+                  , all (`elem` tonic) ch
+                  ]
 
 -- | Configuration for harmony.
 data HarmonyConfig = HarmonyConfig

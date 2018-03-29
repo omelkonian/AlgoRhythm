@@ -31,6 +31,7 @@ library
         Grammar.Melody,
         Grammar.Integration,
         Grammar.Tabla,
+        Grammar.Harmony2,
         -- Utilities
         Utils.Vec,
         Utils.Peano

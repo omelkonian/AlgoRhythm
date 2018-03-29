@@ -14,6 +14,7 @@ module Grammar.Types
 
 import System.Random
 import Text.Show.Functions ()
+import Control.Arrow (first)
 
 import Generate (Weight)
 import Music
@@ -27,25 +28,34 @@ infix 3 :->
 infix 3 |->
 
 {- Grammar datatypes. -}
-type Grammar a meta = [Rule a meta]
-data Rule a meta = Head a :-> Body a meta
+type Grammar meta a = [Rule meta a]
+data Rule meta a = Head a :-> Body meta a
 type Head a = (a, Weight, Activation)
 type Activation = Duration -> Bool
-type Body a meta = Duration -> Term a meta
+type Body meta a = Duration -> Term meta a
 type Terminal a = (a, Duration)
 
-data Term a meta = -- primitive
+data Term meta a = -- primitive
                    Prim (Terminal a)
                    -- sequence
-                   | Term a meta :-: Term a meta
+                   | Term meta a :-: Term meta a
                    -- auxiliary modifications
-                   | Aux Bool meta (Term a meta)
+                   | Aux Bool meta (Term meta a)
                    -- let (enables repetition)
-                   | Let (Term a meta) (forall b. Term b () -> Term b ())
+                   | Let (Term meta a) (forall b. Term () b -> Term () b)
 
-deriving instance (Show a, Show meta) => Show (Term a meta)
+type SimpleTerm = Term ()
 
-instance (Eq a, Eq meta) => Eq (Term a meta) where
+deriving instance (Show a, Show meta) => Show (Term meta a)
+
+instance Functor SimpleTerm where
+  fmap f m = case m of
+    Prim p -> Prim (first f p)
+    m1 :-: m2 -> (f <$> m1) :-: (f <$> m2)
+    Aux frozen () m1 -> Aux frozen () (f <$> m1)
+    Let m1 k -> Let (f <$> m1) k
+
+instance (Eq a, Eq meta) => Eq (Term meta a) where
   (Prim (a, d))  == (Prim (a', d'))   = a == a' && d == d'
   (x :-: y)      == (x' :-: y')       = x == x' && y == y'
   (Aux b meta t) == (Aux b' meta' t') = b == b' && meta == meta' && t == t'
@@ -60,10 +70,10 @@ type Grammarly input a meta b =
 -- a different type `b`.
 class Expand input a meta b | input a meta -> b where
   -- | Expand meta-information.
-  expand :: input -> Term a meta -> IO (Term b ())
+  expand :: input -> Term meta a -> IO (Term () b)
 
 -- | Convert to music (after expansion).
-toMusic :: (Expand input a meta b) => input -> Term a meta -> IO (Music b)
+toMusic :: (Expand input a meta b) => input -> Term meta a -> IO (Music b)
 toMusic input term = do
   expanded <- expand input term
   go $ unlet expanded
@@ -71,7 +81,7 @@ toMusic input term = do
         go (t :-: t')    = (:+:) <$> toMusic () t <*> toMusic () t'
         go _             = error "toMusic: lets/aux after expansion"
 
-        unlet (Let x f)    = unlet (f x)
+        unlet (Let x k)    = unlet (k x)
         unlet (t :-: t')   = unlet t :-: unlet t'
         unlet (Aux _ () t) = unlet t
         unlet t            = t
@@ -82,17 +92,17 @@ instance Expand input a () a where
 
 -- | Run a grammar with the given initial symbol.
 runGrammar :: Grammarly input a meta b
-           => Grammar a meta -> Terminal a -> input -> IO (Music b)
+           => Grammar meta a -> Terminal a -> input -> IO (Music b)
 runGrammar grammar initial input = do
   rewritten <- fixpoint (go grammar) (Prim initial)
   toMusic input rewritten
   where
     -- | Run one term of grammar rewriting.
-    go :: (Eq meta, Eq a) => Grammar a meta -> Term a meta -> IO (Term a meta)
+    go :: (Eq meta, Eq a) => Grammar meta a -> Term meta a -> IO (Term meta a)
     -- go _ (Var x) = return $ Var x
-    go gram (Let x f) = do
+    go gram (Let x k) = do
       x' <- go gram x
-      return $ Let x' f
+      return $ Let x' k
     go gram (t :-: t') =
       (:-:) <$> go gram t <*> go gram t'
     go _ a@(Aux True _ _) =
@@ -119,36 +129,36 @@ always = const True
 (f \/ g) x = f x || g x
 
 -- | Set a primitive term's duration.
-(%:) :: a -> Duration -> Term a meta
+(%:) :: a -> Duration -> Term meta a
 m %: t = Prim (m, t)
 
 -- | Rule with duration-independent body.
-(|->) :: Head a -> Term a meta -> Rule a meta
+(|->) :: Head a -> Term meta a -> Rule meta a
 a |-> b = a :-> const b
 
 -- | Identity rule.
-(-|) :: a -> Weight -> Rule a meta
+(-|) :: a -> Weight -> Rule meta a
 a -| w = (a, w, always) :-> \t -> Prim (a, t)
 
 -- | Identity rule with activation function.
-(-||) :: (a, Weight) -> Activation -> Rule a meta
+(-||) :: (a, Weight) -> Activation -> Rule meta a
 (a, w) -|| f = (a, w, f) :-> \t -> Prim (a, t)
 
 -- | Operators for auxiliary terms.
-($:), (|$:) :: meta -> Term a meta -> Term a meta
+($:), (|$:) :: meta -> Term meta a -> Term meta a
 ($:) = Aux False -- auxiliary symbol that allows internal rewriting
 (|$:) = Aux True -- frozen auxiliary symbol
 
 {- Helpers. -}
 
 -- | Randomly pick a rule to rewrite given terminal.
-pickRule :: Terminal a -> Grammar a meta -> IO (Rule a meta)
+pickRule :: Terminal a -> Grammar meta a -> IO (Rule meta a)
 pickRule (a, _) [] = return $ a -| 1
 pickRule _ rs = do
   let totalWeight = sum ((\((_, w, _) :-> _) -> w) <$> rs)
   index <- getStdRandom $ randomR (0, totalWeight)
   return $ pick' index rs
-  where pick' :: Double -> Grammar a meta -> Rule a meta
+  where pick' :: Double -> Grammar meta a -> Rule meta a
         pick' n (r@((_, w, _) :-> _):rest) =
           if n <= w then r else pick' (n-w) rest
         pick' _ _ = error "pick: empty list"
