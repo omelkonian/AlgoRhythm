@@ -3,6 +3,7 @@ module Export.MIDI (
   , writeToMidiFile
   , play
   , playDev
+  , musicToE
 ) where
 
 import           Codec.Midi

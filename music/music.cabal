@@ -73,7 +73,10 @@ test-suite music-test
         QuickCheck,
         derive,
         directory,
-        lilypond
+        lilypond,
+        bytestring,
+        HCodecs,
+        Euterpea
     default-language: Haskell2010
     hs-source-dirs: test
     -- ghc-options: -threaded -rtsopts -with-rtsopts=-N
