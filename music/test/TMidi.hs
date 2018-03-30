@@ -32,18 +32,16 @@ testAndCleanup f t = buildTestBracketed $ do
 
 midiTests = testGroup "MIDI export"
   [ testAndCleanup "0.midi" $ \f -> testCase "Successfully write to file" $ do
-          let res = unsafePerformIO $ do
-                        let ?config = defConfig
-                        m <- final (16 * wn)
-                        writeToMidiFile f defaultMIDIConfig m
-                        doesFileExist f
-          res @?= True
-
-
+      let res = unsafePerformIO $ do
+                    let ?config = defConfig
+                    m <- final (16 * wn)
+                    writeToMidiFile f defaultMIDIConfig m
+                    doesFileExist f
+      res @?= True
 
   -- Check if the header is correct (HCodecs (which is used by Euterpea))
   -- doesn't check MIDI headers properly.
-  , testAndCleanup "1.midi" $ \f -> testCase "Correct header" $ do
+  , testAndCleanup "1.midi" $ \f -> testCase "Correct Midi header" $ do
       {- See: https://www.csie.ntu.edu.tw/~r92092/ref/midi/
 
          4D546864     = "MThd", which represents the start of a MIDI header chunk.
@@ -68,8 +66,33 @@ midiTests = testGroup "MIDI export"
       let upperHex   = map toUpper hex
       upperHex @?= filter ('-'/=) midiHex
 
+  , testAndCleanup "2.midi" $ \f -> testCase "Sequential music to Euterpea" $ do
+      let ?midiConfig = MIDIConfig (1%2) [AcousticGrandPiano]
+      let m = toMusicCore $ (C#4<|qn :+: Cs#3<|hn)
+      let mE = musicToE c m
+      let mEExpected = Modify (Tempo (1 % 2)) (
+                         Modify (Instrument StringEnsemble2) (
+                           Prim (Note (1 % 4) ((C,4),[]))
+                           :+:
+                           Prim (Note (1 % 2) ((Cs,3),[]))
+                         )
+                       )
+      mE @?= mEExpected
 
-  , testAndCleanup "2.midi" $ \f -> testCase "Sequential composition" $ do
+  , testAndCleanup "3.midi" $ \f -> testCase "Parallel music to Euterpea" $ do
+      let ?midiConfig = MIDIConfig (1%4) [Piccolo]
+      let m = toMusicCore $ (G#1<|qn :=: Ds#6<|hn)
+      let mE = musicToE m
+      let mEExpected = Modify (Tempo (1 % 4)) (
+                         Modify (Instrument Piccolo) (
+                           Prim (Note (1 % 4) ((G,1),[]))
+                           :+:
+                           Prim (Note (1 % 2) ((Ds,6),[]))
+                         )
+                       )
+      compareMusic1s mEExpected mE
+
+  , testAndCleanup "4.midi" $ \f -> testCase "Sequential music to Midi and back" $ do
       let c = defaultMIDIConfig
       let m = toMusicCore $ (C#4<|qn :+: Cs#3<|hn)
       let mE1 = musicToE c m
@@ -78,8 +101,7 @@ midiTests = testGroup "MIDI export"
         mE2 <- importFile f >>= \(Right m) -> return (fromMidi m)
         return $ (preprocess (preprocess mE2)) @?= (preprocess mE1)
 
-
-  , testAndCleanup "3.midi" $ \f -> testCase "Parallel composition" $ do
+  , testAndCleanup "5.midi" $ \f -> testCase "Parallel music to Midi and back" $ do
       let c = defaultMIDIConfig
       let m = toMusicCore $ (G#1<|qn :=: Ds#6<|hn)
       let mE1 = musicToE c m
