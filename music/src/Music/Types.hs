@@ -26,7 +26,7 @@ module Music.Types
          -- * Shorthands
        , (<$$>), (<$$$>)
        , (%), Default(..)
-       , line, chord, scale, parallel
+       , line, chord, scale, parallel, voices
        , flatten, harmonyToMelody
        , absPitch, pitch
        ) where
@@ -204,6 +204,10 @@ chord = foldr1 (:=:)
 scale = line
 parallel = chord
 
+-- TODO handle deeper nesting
+voices :: Music a -> [Music a]
+voices (m :=: m') = m : voices m'
+voices m = [m]
 
 flatten :: Music (Music a) -> Music a
 flatten (m :+: m') = flatten m :+: flatten m'

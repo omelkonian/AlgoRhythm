@@ -1,8 +1,9 @@
+{-# LANGUAGE ImplicitParams #-}
 module Generate.QuickCheck where
 
 import Music
 import Generate.Generate
-import Test.QuickCheck.Gen --(generate, frequency, elements)
+import Test.QuickCheck.Gen
 import Export
 
 quickCheckSelector :: Selector s
@@ -40,4 +41,5 @@ clean s = modified (const $ quickCheckState s)
 playGen :: ToMusicCore a => s -> MusicGenerator s (Music a) -> IO ()
 playGen s music = do
   m <- runGenerator s music
-  playDev 4 defaultMIDIConfig m
+  let ?midiConfig = defaultMIDIConfig
+  playDev 4 m

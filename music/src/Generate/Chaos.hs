@@ -1,4 +1,4 @@
-{-# LANGUAGE GADTs, BangPatterns #-}
+{-# LANGUAGE GADTs, BangPatterns, ImplicitParams #-}
 
 module Generate.Chaos where
 
@@ -15,16 +15,16 @@ chaosSelector s as = do
   (ds, s') <- runStateT genNextIteration s
   let d = head ds
   let a = as !! (round (d * 10e100) `mod` length as)
-  let !x = unsafePerformIO $ print $ show ds
+  let !_ = unsafePerformIO $ print $ show ds
   return (snd a, s')
 
-chaosEntry :: (Enum a, Bounded a) => (ChaosState n) -> Entry (ChaosState n) a
+chaosEntry :: (Enum a, Bounded a) => ChaosState n -> Entry (ChaosState n) a
 chaosEntry _ = Entry { values      = zip (repeat 1) [minBound ..]
                           , constraints = []
                           , selector    = chaosSelector
                           }
 
-chaosState :: (ChaosState n) -> GenState (ChaosState n)
+chaosState :: ChaosState n -> GenState (ChaosState n)
 chaosState st = GenState { state = st
                          , pc  = chaosEntry st
                          , oct = chaosEntry st
@@ -39,19 +39,20 @@ chaosState st = GenState { state = st
                          }
 
 -- | Runs a generator on the chaos state.
-runGenerator :: (ChaosState n) -> MusicGenerator (ChaosState n) a -> IO a
+runGenerator :: ChaosState n -> MusicGenerator (ChaosState n) a -> IO a
 runGenerator = runGenerator' . chaosState
 
 -- runGenerator :: s -> MusicGenerator s a -> IO a
 -- runGenerator = runGenerator' . quickCheckState
 
-clean :: (ChaosState n) -> MusicGenerator (ChaosState n) a -> MusicGenerator (ChaosState n) a
+clean :: ChaosState n -> MusicGenerator (ChaosState n) a -> MusicGenerator (ChaosState n) a
 clean s = modified (const $ chaosState s)
 
-playGen :: ToMusicCore a => (ChaosState n) -> MusicGenerator (ChaosState n) (Music a) -> IO ()
+playGen :: ToMusicCore a => ChaosState n -> MusicGenerator (ChaosState n) (Music a) -> IO ()
 playGen s music = do
   m <- runGenerator s music
-  playDev 4 defaultMIDIConfig m
+  let ?midiConfig = defaultMIDIConfig
+  playDev 4 m
 
 
 

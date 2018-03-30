@@ -9,7 +9,7 @@ import Music
 main :: IO ()
 main = do
   let ?harmonyConfig = HarmonyConfig
-        { basePc  = Gs
+        { basePc  = Ds
         , baseOct = Oct3
         , baseScale = harmonicMinor
         , chords  =
@@ -33,15 +33,16 @@ main = do
             -- , (5, bebopMelodicMinor), (5, bebopHarmonicMinor)
             -- , (1, altered), (1, wholeTone), (1, halfDiminished), (1, flamenco)
             ]
-        , octaves = [(1, Oct2), (5, Oct3), (15, Oct4), (5, Oct5), (1, Oct6)]
+        , octaves = [(1, Oct3), (10, Oct4), (10, Oct5), (1, Oct6)]
         }
-  cp <- final (8 * wn)
-  let midiConfig = MIDIConfig (4%5) RhodesPiano
+  let ?midiConfig = MIDIConfig (3%5) [StringEnsemble1, Violin]
+
+  cp <- final (16 * wn)
   -- writeToMidiFile "cp.midi" midiConfig cp
   -- putStrLn "Wrote to MIDI."
   -- writeToLilypondFile "cp.ly" cp
   -- putStrLn "Wrote to Lilypond"
-  playDev 4 midiConfig (2 ## cp)
+  playDev 4 cp
   putStrLn "Playback finished"
 
   -- tab <- tablaTest

@@ -1,3 +1,4 @@
+{-# LANGUAGE ImplicitParams #-}
 module Export.MIDI (
     module Export.MIDIConfig
   , writeToMidiFile
@@ -14,32 +15,39 @@ import qualified Euterpea as E
 import           Music
 
 -- | Write `Music` to MIDI file.
-writeToMidiFile :: (ToMusicCore a) => FilePath -> MIDIConfig -> Music a -> IO ()
-writeToMidiFile path c = toMusicCore >>> musicToMidi c >>> E.exportMidiFile path
+writeToMidiFile :: (ToMusicCore a, ?midiConfig :: MIDIConfig)
+                => FilePath -> Music a -> IO ()
+writeToMidiFile path = toMusicCore >>> musicToMidi >>> E.exportMidiFile path
 
 -- | Plays `Music` to the given MIDI output device (using Euterpea under the
 --   hood).
-playDev :: (ToMusicCore a) => Int -> MIDIConfig -> Music a -> IO ()
-playDev devId c = toMusicCore >>> musicToE c >>> E.playDev devId
+playDev :: (ToMusicCore a, ?midiConfig :: MIDIConfig)
+        => Int -> Music a -> IO ()
+playDev devId = toMusicCore >>> musicToE >>> E.playDev devId
 
 -- | Plays `Music` to the standard MIDI output device.
-play :: (ToMusicCore a) => MIDIConfig -> Music a -> IO ()
-play c = toMusicCore >>> musicToE c >>> E.play
+play :: (ToMusicCore a, ?midiConfig :: MIDIConfig)
+     => Music a -> IO ()
+play = toMusicCore >>> musicToE >>> E.play
 
 -- | Converts `MusicCore` to `Codec.Midi.Midi`. Note that this is done using
 --   Euterpea's toMidi function, which does not return a Euterpea defined
 --   Midi type, but rather a Midi type from the HCodecs library.
-musicToMidi :: MIDIConfig -> MusicCore -> Midi
-musicToMidi c m = E.toMidi $ E.perform $ musicToE c m
+musicToMidi :: (?midiConfig :: MIDIConfig) => MusicCore -> Midi
+musicToMidi m = E.toMidi $ E.perform $ musicToE m
 
 -- | Converts MusicCore to Euterpea Music1 using a MIDIConfig.
-musicToE :: MIDIConfig -> MusicCore -> E.Music1
-musicToE c m = foldr E.Modify (musicToE' m) (controlsE c)
+musicToE :: (?midiConfig :: MIDIConfig) => MusicCore -> E.Music1
+musicToE ms =
+  E.chord1 [ foldr E.Modify (musicToE' m) modifiers
+           | (inst, m) <- zip (cycle $ instruments ?midiConfig) (voices ms)
+           , let modifiers = [E.Tempo $ tempo ?midiConfig, E.Instrument inst]
+           ]
 
 -- | Converts `MusicCore` to Euterpea Music1
 musicToE' :: MusicCore -> E.Music1
-musicToE' (m :+: m')            = (E.:+:) (musicToE' m) (musicToE' m')
-musicToE' (m :=: m')            = (E.:=:) (musicToE' m) (musicToE' m')
+musicToE' (m :+: m')            = musicToE' m E.:+: musicToE' m'
+musicToE' (m :=: m')            = musicToE' m E.:=: musicToE' m'
 musicToE' (Rest dur)            = E.rest dur
 musicToE' (Note dur (p, attrs)) = noteToE dur (p, attrs)
 
