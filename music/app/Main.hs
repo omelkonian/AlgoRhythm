@@ -37,7 +37,7 @@ main = do
             ]
         , octaves = [(1, Oct3), (10, Oct4), (10, Oct5), (1, Oct6)]
         }
-  let ?midiConfig = MIDIConfig (6%5) [Shakuhachi, Trumpet]
+  let ?midiConfig = MIDIConfig (3%5) [StringEnsemble1, AcousticGrandPiano]
 
   cp <- final (4 * wn)
   -- writeToMidiFile "cp.midi" midiConfig cp
