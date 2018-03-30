@@ -72,6 +72,8 @@ extra-deps: [
 , polyparse-1.12
   # Vec
 , template-haskell-2.11.1.0
+  # To calculate KMeans for Dynamics generation in Grammar.
+, kmeans-0.1.3
 ]
 
 allow-newer: true

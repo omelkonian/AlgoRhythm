@@ -95,7 +95,7 @@ dynamicsToE d = E.StdLoudness dE
         -- fromEnum value one can get from an E.Dynamic value. However, Euterpea
         -- has not derived Bounded for E.Dynamic, so maxBound::E.Dynamic
         -- couldn't be used here.
-        dE = toEnum (min 8 (max 0 (fromEnum d) - 1))
+        dE = toEnum (min 8 (max 0 ((fromEnum d) - 1)))
 
 -- | Converts Articulation to Euterpea Articulation.
 articulationToE :: Articulation -> E.Articulation

@@ -1,5 +1,6 @@
 {-# LANGUAGE ImplicitParams   #-}
 {-# LANGUAGE PostfixOperators #-}
+
 module Main where
 
 import Export
@@ -8,6 +9,7 @@ import Music
 
 main :: IO ()
 main = do
+
   let ?harmonyConfig = HarmonyConfig
         { basePc  = Ds
         , baseOct = Oct3
@@ -35,14 +37,14 @@ main = do
             ]
         , octaves = [(1, Oct3), (10, Oct4), (10, Oct5), (1, Oct6)]
         }
-  let ?midiConfig = MIDIConfig (3%5) [StringEnsemble1, Violin]
+  let ?midiConfig = MIDIConfig (6%5) [Shakuhachi, Trumpet]
 
-  cp <- final (16 * wn)
+  cp <- final (4 * wn)
   -- writeToMidiFile "cp.midi" midiConfig cp
   -- putStrLn "Wrote to MIDI."
   -- writeToLilypondFile "cp.ly" cp
   -- putStrLn "Wrote to Lilypond"
-  playDev 4 cp
+  playDev 0 cp
   putStrLn "Playback finished"
 
   -- tab <- tablaTest

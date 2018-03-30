@@ -7,6 +7,7 @@ import           Grammar.Harmony
 import           Grammar.Melody
 import qualified Grammar.TonalHarmony as Tonal
 import           Grammar.Types
+import           Grammar.Dynamics
 import qualified Grammar.UUHarmony    as UU
 import           Grammar.VoiceLeading
 import           Music
@@ -21,7 +22,7 @@ final t = do
   background <- voiceLead harmonicStructure
   foreground <- mkSolo harmonicStructure melodicStructure
   return $ (soften <$> toMusicCore background) :=:
-           (soften' <$> toMusicCore foreground)
+           (addDynamics (toMusicCore foreground) t)
   where
     soften (p, _) = p <: [Dynamic PPP]
     soften' (p, _) = p <: [Dynamic P]
