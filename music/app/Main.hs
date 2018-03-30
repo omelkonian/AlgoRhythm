@@ -10,7 +10,7 @@ main :: IO ()
 main = do
   let ?harmonyConfig = HarmonyConfig
         { basePc  = Gs
-        , baseOct = Oct4
+        , baseOct = Oct3
         , baseScale = harmonicMinor
         , chords  =
             [ (10, maj), (10, mi)
@@ -27,8 +27,8 @@ main = do
         { scales  =
             [ (10, ionian), (10, dorian), (10, phrygian), (10, lydian)
             , (10, mixolydian), (10, aeolian), (10, pentatonicMajor)
-            -- , (10, locrian), (10, minor), (10, harmonicMinor)
-            -- , (10, melodicMinor), (10, pentatonicMinor), (10, blues)
+            , (10, locrian), (10, minor), (10, harmonicMinor)
+            , (10, melodicMinor), (10, pentatonicMinor), (10, blues)
             -- , (5, bebopDominant), (5, bebopDorian), (5, bebopMajor)
             -- , (5, bebopMelodicMinor), (5, bebopHarmonicMinor)
             -- , (1, altered), (1, wholeTone), (1, halfDiminished), (1, flamenco)
@@ -36,7 +36,7 @@ main = do
         , octaves = [(1, Oct2), (5, Oct3), (15, Oct4), (5, Oct5), (1, Oct6)]
         }
   cp <- final (8 * wn)
-  let midiConfig = MIDIConfig (4%5) HammondOrgan
+  let midiConfig = MIDIConfig (4%5) RhodesPiano
   -- writeToMidiFile "cp.midi" midiConfig cp
   -- putStrLn "Wrote to MIDI."
   -- writeToLilypondFile "cp.ly" cp

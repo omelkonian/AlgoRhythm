@@ -1,8 +1,8 @@
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-module Grammar.Harmony2
-       ( harmony2, Degree2 (..)
+module Grammar.UUHarmony
+       ( harmony, Degree (..)
        ) where
 
 import Data.Ratio (denominator, numerator)
@@ -11,15 +11,15 @@ import qualified Grammar.Harmony   as H
 import           Grammar.Types
 import           Music
 
-data Degree2 =
+data Degree =
   -- terminals
   I | II | III | IV | V | VI | VII
   -- non-terminals
   | Piece | Phrase | Tonic | Dominant | SubDominant
   deriving (Eq, Show, Enum, Bounded)
 
-harmony2 :: Grammar H.Modulation Degree2
-harmony2 =
+harmony :: Grammar H.Modulation Degree
+harmony =
   let bars4 t = foldl1 (:-:)
               $ replicate (fromInteger $ quot (numerator t) (denominator t * 4))
               $ Phrase%:(4 * wn)
@@ -45,23 +45,6 @@ harmony2 =
   , (SubDominant, 1, (<= wn)) :-> \t -> III%:t/2 :-: IV%:t/2
   ]
 
-toDegree :: Degree2 -> H.Degree
-toDegree d = case d of
-  I   -> H.I
-  II  -> H.II
-  III -> H.III
-  IV  -> H.IV
-  V   -> H.V
-  VI  -> H.VI
-  VII -> H.VII
-  e   -> error $ "toDegree: incomplete grammar rewrite [" ++ show e ++ "]"
-
 -- | Expands modulations and intreprets degrees to chords.
-instance Expand H.HarmonyConfig Degree2 H.Modulation SemiChord where
-  expand conf (m :-: m') = (:-:) <$> expand conf m <*> expand conf m'
-  expand conf (Let x f)  = f <$> expand conf x
-  expand conf (Aux _ (H.Modulation itv) t) =
-    expand (conf {H.basePc = H.basePc conf ~~> itv}) t
-  expand conf (Prim (a, t)) = do
-    ch <- conf `H.interpret` toDegree a
-    return $ Prim (ch, t)
+instance Expand H.HarmonyConfig Degree H.Modulation SemiChord where
+  expand conf = expand conf . fmap ((toEnum :: Int -> H.Degree) . fromEnum)

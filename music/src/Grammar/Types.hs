@@ -12,9 +12,9 @@ module Grammar.Types
        , (-|), (-||), ($:), (|$:), (|->), (%:)
        ) where
 
+import Control.Arrow       (first)
 import System.Random
 import Text.Show.Functions ()
-import Control.Arrow (first)
 
 import Generate (Weight)
 import Music
@@ -44,16 +44,14 @@ data Term meta a = -- primitive
                    -- let (enables repetition)
                    | Let (Term meta a) (forall b. Term () b -> Term () b)
 
-type SimpleTerm = Term ()
-
 deriving instance (Show a, Show meta) => Show (Term meta a)
 
-instance Functor SimpleTerm where
+instance Functor (Term meta) where
   fmap f m = case m of
-    Prim p -> Prim (first f p)
-    m1 :-: m2 -> (f <$> m1) :-: (f <$> m2)
-    Aux frozen () m1 -> Aux frozen () (f <$> m1)
-    Let m1 k -> Let (f <$> m1) k
+    Prim p             -> Prim (first f p)
+    m1 :-: m2          -> (f <$> m1) :-: (f <$> m2)
+    Aux frozen meta m1 -> Aux frozen meta (f <$> m1)
+    Let m1 k           -> Let (f <$> m1) k
 
 instance (Eq a, Eq meta) => Eq (Term meta a) where
   (Prim (a, d))  == (Prim (a', d'))   = a == a' && d == d'
@@ -72,6 +70,9 @@ class Expand input a meta b | input a meta -> b where
   -- | Expand meta-information.
   expand :: input -> Term meta a -> IO (Term () b)
 
+  -- default expand :: (Expand input a' meta b, Enum a', Enum a) => input -> Term meta a ->  IO (Term () b)
+  -- expand conf = expand conf . fmap ((toEnum :: Int -> a') . fromEnum)
+
 -- | Convert to music (after expansion).
 toMusic :: (Expand input a meta b) => input -> Term meta a -> IO (Music b)
 toMusic input term = do
@@ -86,9 +87,13 @@ toMusic input term = do
         unlet (Aux _ () t) = unlet t
         unlet t            = t
 
--- | A term with no auxiliaries can be trivially expanded.
+-- | A term with no auxiliary wrappers can be trivially expanded.
 instance Expand input a () a where
   expand = const return
+
+-- | A term with no auxiliaries can be trivially expanded.
+-- instance (Enum a, Enum b, Expand input a meta c) => Expand input b meta c where
+--   expand conf = expand conf . fmap ((toEnum :: Int -> b) . fromEnum)
 
 -- | Run a grammar with the given initial symbol.
 runGrammar :: Grammarly input a meta b

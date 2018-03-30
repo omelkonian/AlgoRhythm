@@ -26,7 +26,7 @@ module Music.Types
          -- * Shorthands
        , (<$$>), (<$$$>)
        , (%), Default(..)
-       , line, chord, scale
+       , line, chord, scale, parallel
        , flatten, harmonyToMelody
        , absPitch, pitch
        ) where
@@ -198,10 +198,12 @@ class (Eq a, Enum a, Bounded a) => BoundEnum a where
 instance (Eq a, Enum a, Bounded a) => BoundEnum a where
 
 -- Useful shorthands.
-line, chord, scale :: [Music a] -> Music a
+line, chord, scale, parallel :: [Music a] -> Music a
 line = foldr1 (:+:)
 chord = foldr1 (:=:)
 scale = line
+parallel = chord
+
 
 flatten :: Music (Music a) -> Music a
 flatten (m :+: m') = flatten m :+: flatten m'

@@ -1,21 +1,22 @@
-{-# LANGUAGE ImplicitParams        #-}
+{-# LANGUAGE ImplicitParams #-}
 module Grammar.Integration
        ( final
        ) where
 
-import Grammar.Types
-import Grammar.Harmony
-import Grammar.VoiceLeading
-import Grammar.Melody
-import Grammar.Harmony2 as H2
-import Music
+import           Grammar.Harmony
+import           Grammar.Melody
+import qualified Grammar.TonalHarmony as Tonal
+import           Grammar.Types
+import qualified Grammar.UUHarmony    as UU
+import           Grammar.VoiceLeading
+import           Music
 
 final :: (?melodyConfig :: MelodyConfig, ?harmonyConfig :: HarmonyConfig)
       => Duration -> IO MusicCore
 final t = do
-  -- harmonicStructure <- test t
-  harmonicStructure <- runGrammar H2.harmony2 (H2.I, t) ?harmonyConfig
   -- harmonicStructure <- runGrammar harmony (I, t) ?harmonyConfig
+  harmonicStructure <- runGrammar UU.harmony2 (UU.Piece, t) ?harmonyConfig
+  -- harmonicStructure <- runGrammar Tonal.harmony3 (Tonal.Piece, t) ?harmonyConfig
   melodicStructure <- runGrammar melody (MQ, t) ()
   background <- voiceLead harmonicStructure
   foreground <- mkSolo harmonicStructure melodicStructure

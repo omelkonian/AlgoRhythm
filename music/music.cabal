@@ -27,11 +27,12 @@ library
         Grammar.Types,
         Grammar.Utilities,
         Grammar.Harmony,
+        Grammar.UUHarmony,
+        Grammar.TonalHarmony,
         Grammar.VoiceLeading,
         Grammar.Melody,
         Grammar.Integration,
         Grammar.Tabla,
-        Grammar.Harmony2,
         -- Utilities
         Utils.Vec,
         Utils.Peano
