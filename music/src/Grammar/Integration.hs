@@ -7,7 +7,7 @@ import           Grammar.Harmony
 import           Grammar.Melody
 import qualified Grammar.TonalHarmony as Tonal
 import           Grammar.Types
-import           Grammar.Dynamics
+import           Grammar.Dynamics (addDynamics)
 import qualified Grammar.UUHarmony    as UU
 import           Grammar.VoiceLeading
 import           Music
@@ -25,4 +25,3 @@ final t = do
            (addDynamics (toMusicCore foreground) t)
   where
     soften (p, _) = p <: [Dynamic PPP]
-    soften' (p, _) = p <: [Dynamic P]
