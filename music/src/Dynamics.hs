@@ -1,11 +1,9 @@
-{-# LANGUAGE ImplicitParams #-}
+module Dynamics (addDynamics) where
 
-module Grammar.Dynamics (addDynamics) where
-
-import           Data.KMeans (kmeansGen)
-import           Data.Maybe (fromJust)
-import           Data.List (find)
-import           Music
+import Data.KMeans (kmeansGen)
+import Data.List   (find)
+import Data.Maybe  (fromJust)
+import Music
 
 type AbsStartTime  = Rational
 type PitchIntValue = Int
@@ -13,8 +11,9 @@ type ClusterMusicA = (FullPitch, (AbsStartTime, PitchIntValue))
 type MusicCluster  = Music ClusterMusicA
 type Cluster       = [ClusterMusicA]
 
-addDynamics :: MusicCore -> MusicCore
-addDynamics m = do
+addDynamics :: (ToMusicCore a) => Music a -> MusicCore
+addDynamics m' = do
+  let m = toMusicCore m'
   let mCluster = coreToCluster m
   let clusters = cluster mCluster
   -- Generate dynamics for notes per cluster, and then concatenate the clusters.
@@ -22,7 +21,7 @@ addDynamics m = do
   addDynamicsToMCore mCluster dynamics
 
 addDynamicsToMCore ::  MusicCluster -> Cluster -> MusicCore
-addDynamicsToMCore m c = do
+addDynamicsToMCore m c =
   fmap add m
   where add (_,info) =
             -- Find the element in c with matching absolute start time and pitch int value,
@@ -31,10 +30,10 @@ addDynamicsToMCore m c = do
             fst $ fromJust $ find ((info==) . snd) c
 
 minTime :: [ClusterMusicA] -> AbsStartTime
-minTime m = (fst . snd) (head (m))
+minTime m = (fst . snd) (head m)
 
 maxTime :: [ClusterMusicA] -> AbsStartTime
-maxTime m = (fst . snd) (last (m))
+maxTime m = (fst . snd) (last m)
 
 addDynamicsToCluster :: Cluster -> Cluster
 addDynamicsToCluster [] = []
@@ -46,8 +45,8 @@ addDynamicsToCluster c = do
   let progress t = fromRational $ (t - cMin) / cLen
   let pToDyn ((p,attrs),(t,y)) = do
           let maxDynNum = fromIntegral (fromEnum (maxBound :: Dynamic)) :: Double
-          let dynNum    = round $ (maxDynNum/2) + ((maxDynNum/4) * (sin (2 * pi * (progress t))))
-          let dyn       = Dynamic ((toEnum dynNum) :: Dynamic)
+          let dynNum    = round $ (maxDynNum/2) + ((maxDynNum/4) * sin (2 * pi * progress t))
+          let dyn       = Dynamic (toEnum dynNum :: Dynamic)
           ((p,dyn:attrs),(t,y))
   map pToDyn c
 
@@ -72,11 +71,11 @@ coreToCluster = calcClusterInfo . fmap (\p -> (p,(0,0)) )
 
 -- | Adds absolute times to Notes.
 calcClusterInfo :: MusicCluster -> MusicCluster
-calcClusterInfo (m1@(Rest l)   :+: m2) = m1                   :+: (fmap (addTime l) (calcClusterInfo m2))
-calcClusterInfo (m1@(Note l _) :+: m2) = (calcClusterInfo m1) :+: (fmap (addTime l) (calcClusterInfo m2))
-calcClusterInfo (m1 :=: m2)            = (calcClusterInfo m1) :=: (calcClusterInfo m2)
+calcClusterInfo (m1@(Rest l)   :+: m2) = m1                 :+: fmap (addTime l) (calcClusterInfo m2)
+calcClusterInfo (m1@(Note l _) :+: m2) = calcClusterInfo m1 :+: fmap (addTime l) (calcClusterInfo m2)
+calcClusterInfo (m1 :=: m2)            = calcClusterInfo m1 :=: calcClusterInfo m2
 calcClusterInfo (m1 :+: m2)            =
-  (calcClusterInfo m1) :+: (fmap (addTime (duration m1)) (calcClusterInfo m2))
+  calcClusterInfo m1 :+: fmap (addTime (duration m1)) (calcClusterInfo m2)
 calcClusterInfo r@(Rest _)             = r
 calcClusterInfo (Note l (p,(x,_)))     = Note l (p,(x, fromEnum p))
 
@@ -84,8 +83,8 @@ calcClusterInfo (Note l (p,(x,_)))     = Note l (p,(x, fromEnum p))
 duration :: Music a -> Duration
 duration (m1 :+: m2) = (+) (duration m1) (duration m2)
 duration (m1 :=: m2) = max (duration m1) (duration m2)
-duration (Note l _) = l
-duration (Rest l)   = l
+duration (Note l _)  = l
+duration (Rest l)    = l
 
 -- | Adds an amount of time to the AbsStartTime field of a ClusterMusicA Note.
 addTime :: Duration -> ClusterMusicA -> ClusterMusicA

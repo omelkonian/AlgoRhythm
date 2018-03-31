@@ -25,7 +25,7 @@ module Music.Types
        , BoundEnum (..)
          -- * Shorthands
        , (<$$>), (<$$$>)
-       , (%), Default(..)
+       , (%), (//), Default(..)
        , line, chord, scale, parallel, voices
        , notes, flatten, harmonyToMelody
        , absPitch, pitch
@@ -34,10 +34,13 @@ module Music.Types
 import Data.Default (Default (..))
 import Data.Monoid  ((<>))
 import GHC.Generics (Generic)
-import GHC.Real     ((%))
+import Data.Ratio   ((%), numerator, denominator)
 
 -- | Operator precedence.
 infixr 4 :+:, :=:, <$$>
+
+(//) :: Rational -> Rational -> Int
+r1 // r2 = let r = r1 / r2 in fromInteger $ quot (numerator r) (denominator r)
 
 ---------------------------------- TYPES ---------------------------------------
 data Music a = Music a :+: Music a

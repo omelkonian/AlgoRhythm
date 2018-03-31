@@ -6,18 +6,22 @@ module Main where
 import Export
 import Grammar
 import Music
+import Dynamics
 
 main :: IO ()
 main = do
+  let ?midiConfig = MIDIConfig (6%5) [AcousticGrandPiano]
+  let t = 4 * wn
+
 
   let ?harmonyConfig = HarmonyConfig
-        { basePc  = Ds
-        , baseOct = Oct3
-        , baseScale = harmonicMinor
+        { basePc  = A
+        , baseOct = Oct4
+        , baseScale = minor
         , chords  =
             [ (10, maj), (10, mi)
-            , (8, d7), (8, maj6), (8, m6)
-            , (7, maj7), (7, m7)
+            -- , (8, d7), (8, maj6), (8, m6)
+            -- , (7, maj7), (7, m7)
             , (6, dim), (6, aug)
             -- , (6, sus4), (6, d7sus4)
             -- , (5, dim7), (5, m7b5)
@@ -25,34 +29,30 @@ main = do
             -- , (1, d7b5), (1, d7s5), (1, d7b9), (1, d7s9), (1, d7b5b9)
             ]
         }
+  harmonicStructure <- runGrammar uuHarmony t ?harmonyConfig
+  background <- voiceLead harmonicStructure
+
   let ?melodyConfig = MelodyConfig
         { scales  =
-            [ (10, ionian), (10, dorian), (10, phrygian), (10, lydian)
-            , (10, mixolydian), (10, aeolian), (10, pentatonicMajor)
-            , (10, locrian), (10, minor), (10, harmonicMinor)
-            , (10, melodicMinor), (10, pentatonicMinor), (10, blues)
+            [ (10, ionian)
+            -- , (10, dorian), (10, phrygian), (10, lydian)
+            -- , (10, mixolydian), (10, aeolian), (10, pentatonicMajor)
+            -- , (10, locrian), (10, minor), (10, harmonicMinor)
+            -- , (10, melodicMinor), (10, pentatonicMinor), (10, blues)
             -- , (5, bebopDominant), (5, bebopDorian), (5, bebopMajor)
             -- , (5, bebopMelodicMinor), (5, bebopHarmonicMinor)
-            -- , (1, altered), (1, wholeTone), (1, halfDiminished), (1, flamenco)
+            -- , (5, altered), (5, wholeTone), (5, halfDiminished), (5, flamenco)
             ]
-        , octaves = [(1, Oct3), (10, Oct4), (10, Oct5), (1, Oct6)]
+        , octaves = [(1, Oct3), (20, Oct4), (15, Oct5), (1, Oct6)]
         }
-  let ?midiConfig = MIDIConfig (6%5) [StringEnsemble1, AcousticGrandPiano]
+  melodicStructure <- runGrammar melody t ()
+  foreground <- mkSolo harmonicStructure melodicStructure
 
-  cp <- final (4 * wn)
-  -- writeToMidiFile "cp.midi" midiConfig cp
-  -- putStrLn "Wrote to MIDI."
-  -- writeToLilypondFile "cp.ly" cp
-  -- putStrLn "Wrote to Lilypond"
-  playDev 0 cp
-  putStrLn "Playback finished"
+  playDev 4 $
+    5000 ##
+      addDynamics (toMusicCore background :=: toMusicCore foreground)
 
-  -- tab <- tablaTest
-  -- writeToMidiFile "tablas.midi" defaultMIDIConfig tab
-  -- putStrLn "Wrote to MIDI."
-
-  -- writeToLilypondFile "out.ly" small
-  -- putStrLn (show $ musicToLilypond small)
-
-small :: MusicCore
-small = (C#4 <: []) <| (11%16)
+  -- let ?tablaBeat = tn
+  -- rhythm <- runGrammar tabla t ()
+  -- writeToMidiFile "rhythm.midi" rhythm
+  -- putStrLn "Wrote rhythm to MIDI."
