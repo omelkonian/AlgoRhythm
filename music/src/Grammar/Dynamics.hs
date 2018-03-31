@@ -13,24 +13,22 @@ type ClusterMusicA = (FullPitch, (AbsStartTime, PitchIntValue))
 type MusicCluster  = Music ClusterMusicA
 type Cluster       = [ClusterMusicA]
 
-addDynamics :: MusicCore -> Duration -> MusicCore
-addDynamics m dur = do
+addDynamics :: MusicCore -> MusicCore
+addDynamics m = do
   let mCluster = coreToCluster m
-  let clusters = cluster mCluster dur
+  let clusters = cluster mCluster
   -- Generate dynamics for notes per cluster, and then concatenate the clusters.
   let dynamics = concatMap addDynamicsToCluster clusters
   addDynamicsToMCore mCluster dynamics
 
 addDynamicsToMCore ::  MusicCluster -> Cluster -> MusicCore
-addDynamicsToMCore (m1 :+: m2) cs = (addDynamicsToMCore m1 cs :+: addDynamicsToMCore m2 cs)
-addDynamicsToMCore (m1 :=: m2) cs = (addDynamicsToMCore m1 cs :=: addDynamicsToMCore m2 cs)
-addDynamicsToMCore (Rest d)  _  = Rest d
-addDynamicsToMCore (Note d (_,info)) cs = do
-  -- Find the element in cs with matching absolute start time and pitch int value,
-  -- and get the FullPitch (that contains the dynamic) from that element and put
-  -- it in the note.
-  let (p,_) = fromJust $ find ((info==) . snd) cs
-  Note d p
+addDynamicsToMCore m c = do
+  fmap add m
+  where add (_,info) =
+            -- Find the element in c with matching absolute start time and pitch int value,
+            -- and get the FullPitch (that contains the dynamic) from that element and put
+            -- it in the note.
+            fst $ fromJust $ find ((info==) . snd) c
 
 minTime :: [ClusterMusicA] -> AbsStartTime
 minTime m = (fst . snd) (head (m))
@@ -53,12 +51,14 @@ addDynamicsToCluster c = do
           ((p,dyn:attrs),(t,y))
   map pToDyn c
 
-cluster :: MusicCluster -> Duration -> [Cluster]
-cluster m dur = kmeansGen gen k m'
+-- | Clusters a MusicCluster. The number of clusters is equal to half
+cluster :: MusicCluster -> [Cluster]
+cluster m = kmeansGen gen k (notes m)
   where gen :: ClusterMusicA -> [Double]
-        gen (_,(x,_)) = [fromRational x]--, fromIntegral y]
-        m' = foldr (:) [] m
-        k = round (((fromRational dur) / 2) :: Double)
+        gen (_,(x,y)) = [fromRational x, fromIntegral y]
+        -- The number of clusters is equal to the duration of the music divided
+        -- by 4 (we assume that 4 beats go into a measure.)
+        k = round ((fromRational (duration m) :: Double) / 4)
         -- TODO (if current solution isn't good enough) Better k measure. This one makes no sense whatsoever.
         --k = ceiling $ (fromIntegral (length m')) / (fromRational (maxTime m'))
 
@@ -72,14 +72,21 @@ coreToCluster = calcClusterInfo . fmap (\p -> (p,(0,0)) )
 
 -- | Adds absolute times to Notes.
 calcClusterInfo :: MusicCluster -> MusicCluster
-calcClusterInfo (m1@(Rest l)   :+: m2) = m1 :+: (fmap (addTime l) (calcClusterInfo m2))
+calcClusterInfo (m1@(Rest l)   :+: m2) = m1                   :+: (fmap (addTime l) (calcClusterInfo m2))
 calcClusterInfo (m1@(Note l _) :+: m2) = (calcClusterInfo m1) :+: (fmap (addTime l) (calcClusterInfo m2))
 calcClusterInfo (m1 :=: m2)            = (calcClusterInfo m1) :=: (calcClusterInfo m2)
+calcClusterInfo (m1 :+: m2)            =
+  (calcClusterInfo m1) :+: (fmap (addTime (duration m1)) (calcClusterInfo m2))
 calcClusterInfo r@(Rest _)             = r
 calcClusterInfo (Note l (p,(x,_)))     = Note l (p,(x, fromEnum p))
--- TODO: Add missing patterns. I don't know if we have to though, because it's
---       only necessary if the used grammars can create something like
---       (a :+: b) :+: c instead of a :+: (b :+: c).
 
-addTime :: Rational -> ClusterMusicA -> ClusterMusicA
+-- | Calculates the duration of a piece of Music.
+duration :: Music a -> Duration
+duration (m1 :+: m2) = (+) (duration m1) (duration m2)
+duration (m1 :=: m2) = max (duration m1) (duration m2)
+duration (Note l _) = l
+duration (Rest l)   = l
+
+-- | Adds an amount of time to the AbsStartTime field of a ClusterMusicA Note.
+addTime :: Duration -> ClusterMusicA -> ClusterMusicA
 addTime t (p,(x,y)) = (p,(x+t,y))

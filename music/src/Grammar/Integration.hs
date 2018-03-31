@@ -21,7 +21,4 @@ final t = do
   melodicStructure <- runGrammar melody (MQ, t) ()
   background <- voiceLead harmonicStructure
   foreground <- mkSolo harmonicStructure melodicStructure
-  return $ (soften <$> toMusicCore background) :=:
-           (addDynamics (toMusicCore foreground) t)
-  where
-    soften (p, _) = p <: [Dynamic PPP]
+  return $ addDynamics ((toMusicCore background) :=: (toMusicCore foreground))

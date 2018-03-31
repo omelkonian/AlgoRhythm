@@ -27,7 +27,7 @@ module Music.Types
        , (<$$>), (<$$$>)
        , (%), Default(..)
        , line, chord, scale, parallel, voices
-       , flatten, harmonyToMelody
+       , notes, flatten, harmonyToMelody
        , absPitch, pitch
        ) where
 
@@ -214,6 +214,12 @@ parallel = chord
 voices :: Music a -> [Music a]
 voices (m :=: m') = m : voices m'
 voices m = [m]
+
+notes :: Music a -> [a]
+notes (m :+: m') = notes m ++ notes m'
+notes (m :=: m') = notes m ++ notes m'
+notes (Note _ m) = [m]
+notes (Rest _)   = []
 
 flatten :: Music (Music a) -> Music a
 flatten (m :+: m') = flatten m :+: flatten m'
