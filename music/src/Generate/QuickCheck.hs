@@ -1,4 +1,4 @@
-{-# LANGUAGE ImplicitParams #-}
+  {-# LANGUAGE ImplicitParams #-}
 module Generate.QuickCheck where
 
 import Music
@@ -6,7 +6,7 @@ import Generate.Generate
 import Test.QuickCheck.Gen
 import Export
 
-quickCheckSelector :: Selector s
+quickCheckSelector :: Selector s a
 quickCheckSelector s as =
   let conv (x, a) = ((round . (*) 100) x, elements [a]) in
     generate $ frequency (map conv as) >>= \a -> return (a,s)

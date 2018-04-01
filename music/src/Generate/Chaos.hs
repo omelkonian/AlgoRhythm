@@ -10,7 +10,7 @@ import Control.Monad (void)
 import Control.Monad.State hiding (state)
 import System.IO.Unsafe
 
-chaosSelector :: Selector (ChaosState n)
+chaosSelector :: Selector (ChaosState n) a
 chaosSelector s as = do
   (ds, s') <- runStateT genNextIteration s
   let d = head ds
@@ -53,19 +53,6 @@ playGen s music = do
   m <- runGenerator s music
   let ?midiConfig = defaultMIDIConfig
   playDev 4 m
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 -- | Builds a ChaosState from two Vectors of the same length. This constraint
 --   is imposed since the number of variables should be equal to the number

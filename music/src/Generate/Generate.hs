@@ -12,7 +12,7 @@ import Control.Monad.State hiding (state)
 import Music
 
 type Weight = Double
-type Selector s = forall a . s -> [(Weight, a)] -> IO (a, s)
+type Selector s a = s -> [(Weight, a)] -> IO (a, s)
 
 data Accessor st s a = Accessor
   { getValue :: st s -> Entry s a
@@ -20,14 +20,14 @@ data Accessor st s a = Accessor
   }
 
 -- | State to be kept during generation
-type Constraint a = a -> Bool  -- TODO add IDs to add/remove
+type Constraint a = a -> Bool
 
 data Entry s a = Entry { values      :: [(Weight, a)]
                        , constraints :: [Constraint a]
-                       , selector    :: Selector s
+                       , selector    :: Selector s a
                        }
 
-data GenState s = GenState { state :: s
+data GenState s = GenState { state     :: s
                            , pc    :: Entry s PitchClass
                            , oct   :: Entry s Octave
                            , dur   :: Entry s Duration
@@ -67,10 +67,15 @@ getEntry accessor = do
 putEntry :: Accessor st s a -> Entry s a -> GenericMusicGenerator st s ()
 putEntry accessor entry = modify $ setValue accessor entry
 
-putSelector :: Accessor st s a -> Selector s -> GenericMusicGenerator st s ()
+putSelector :: Accessor st s a -> Selector s a -> GenericMusicGenerator st s ()
 putSelector accessor sel = do
   entry <- getEntry accessor
   putEntry accessor (entry { selector = sel })
+
+putOptions :: Accessor st s a -> [(Weight, a)] -> GenericMusicGenerator st s ()
+putOptions accessor options = do
+  entry <- getEntry accessor
+  putEntry accessor (entry { values = options })
 
 setState :: s -> MusicGenerator s ()
 setState state' = modify (\st -> st { state = state' })

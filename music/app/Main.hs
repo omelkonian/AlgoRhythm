@@ -6,10 +6,13 @@ module Main where
 import Export
 import Grammar
 import Music
+import Generate
+
+import Control.Monad
+import Control.Monad.State
 
 main :: IO ()
 main = do
-
   let ?harmonyConfig = HarmonyConfig
         { basePc  = Ds
         , baseOct = Oct3
@@ -37,16 +40,16 @@ main = do
             ]
         , octaves = [(1, Oct3), (10, Oct4), (10, Oct5), (1, Oct6)]
         }
-  let ?midiConfig = MIDIConfig (3%5) [StringEnsemble1, AcousticGrandPiano]
+  let ?midiConfig = MIDIConfig (4%4) [BrassSection, AcousticGrandPiano]
 
   cp <- final (4 * wn)
   -- writeToMidiFile "cp.midi" midiConfig cp
   -- putStrLn "Wrote to MIDI."
   -- writeToLilypondFile "cp.ly" cp
   -- putStrLn "Wrote to Lilypond"
-  playDev 0 cp
+  writeToLilypondFile "out.ly" cp
+  writeToMidiFile "out.midi" cp
   putStrLn "Playback finished"
-
   -- tab <- tablaTest
   -- writeToMidiFile "tablas.midi" defaultMIDIConfig tab
   -- putStrLn "Wrote to MIDI."

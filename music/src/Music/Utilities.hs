@@ -25,6 +25,9 @@ instance Abstract [Interval] Pitch [Pitch] where
 instance Abstract [Interval] PitchClass [PitchClass] where
   instantiate p rep = [p ~~> if i - P8 > P1 then i - P8 else i | i <- rep]
 
+instance Abstract Interval PitchClass PitchClass where
+  instantiate p rep = p ~> rep
+
 instance (Functor f, Abstract rep a inst) => Abstract rep (f a) (f inst) where
   instantiate ma rep = (`instantiate` rep) <$> ma
 
