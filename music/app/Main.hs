@@ -45,24 +45,8 @@ main = do
             ]
         , octaves = [(1, Oct3), (20, Oct4), (15, Oct5), (1, Oct6)]
         }
-<<<<<<< HEAD
-  let ?midiConfig = MIDIConfig (4%4) [BrassSection, AcousticGrandPiano]
-
-  cp <- final (4 * wn)
-  -- writeToMidiFile "cp.midi" midiConfig cp
-  -- putStrLn "Wrote to MIDI."
-  -- writeToLilypondFile "cp.ly" cp
-  -- putStrLn "Wrote to Lilypond"
-  writeToLilypondFile "out.ly" cp
-  writeToMidiFile "out.midi" cp
-  putStrLn "Playback finished"
-  -- tab <- tablaTest
-  -- writeToMidiFile "tablas.midi" defaultMIDIConfig tab
-  -- putStrLn "Wrote to MIDI."
-=======
   melodicStructure <- runGrammar melody t ()
   foreground <- mkSolo harmonicStructure melodicStructure
->>>>>>> 5caaf9d4d624c4ae62feb76cbd0c4e736fdb13f2
 
   playDev 4 $
     5000 ##

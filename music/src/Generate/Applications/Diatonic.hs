@@ -125,8 +125,6 @@ module Generate.Applications.Diatonic where
   -- | Generate a diatonic melody. Strictly speaking, the generated
   --   melodies don't have to be diatonic, as any possible scale can be
   --   given to function as the generator's basis
-    pattern -> expression
-    otherwise -> expression
   diatonicMelody :: PitchClass -> [Interval]
                                -> MusicGenerator () MusicCore
   diatonicMelody key scale = do
