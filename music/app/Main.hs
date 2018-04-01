@@ -48,9 +48,10 @@ main = do
   melodicStructure <- runGrammar melody t ()
   foreground <- mkSolo harmonicStructure melodicStructure
 
-  playDev 4 $
+  let d = expPitchDynamics
+  playDev 0 $
     5000 ##
-      addDynamics (toMusicCore background :=: toMusicCore foreground)
+      addDynamics (toMusicCore background :=: toMusicCore foreground) d
 
   -- let ?tablaBeat = tn
   -- rhythm <- runGrammar tabla t ()

@@ -1,4 +1,7 @@
-module Dynamics (addDynamics) where
+module Dynamics ( addDynamics
+                , sinTimeDynamics
+                , sinPitchDynamics
+                , expPitchDynamics) where
 
 import Data.KMeans (kmeansGen)
 import Data.List   (find)
@@ -11,13 +14,41 @@ type ClusterMusicA = (FullPitch, (AbsStartTime, PitchIntValue))
 type MusicCluster  = Music ClusterMusicA
 type Cluster       = [ClusterMusicA]
 
-addDynamics :: (ToMusicCore a) => Music a -> MusicCore
-addDynamics m' = do
+-- | Gets the time of the note within its cluster as a Double in the range
+--   [0,1] (where 0 represents that the note is at the start of the cluster,
+--   and 1 that it's at the end of the cluster) and the pitch of the note
+--   within the cluster (where 0 represents the lowest note in the cluster and
+--   1 the highest note in the cluster) and returns another Double in the range
+--   [0,1] that represents how loud the note should be played, where 0 is as
+--   soft as possible (but not silent!) and 1 is as loud as possible.
+type DynamicsMap =  Double -- ^ Time location of note in cluster, in range [0,1].
+                 -> Double -- ^ Pitch location in cluster, in range [0,1].
+                 -> Double -- ^ Volume of the note, in range [0,1].
+
+-- | Returns a dynamic between 25% and 75% volume, based on one full sine
+--   oscillation
+sinTimeDynamics :: DynamicsMap
+sinTimeDynamics x _ = 0.25 + (0.25 * sin (2 * pi * x))
+
+-- | Returns a dynamic between 0% and 100% volume, based on one full sine
+--   oscillation. Note that this sounds rediculous
+sinPitchDynamics :: DynamicsMap
+sinPitchDynamics x _ = 0.25 + (0.25 * sin (2 * pi * x))
+
+-- | Returns a dynamic between 0% and 100% volume, based on the exponential
+--   quantile function and the relative pitch height of the note in the cluster.
+expPitchDynamics :: DynamicsMap
+expPitchDynamics _ y = max 0.25 (min 0.8 (-log (1 - y)))
+
+
+
+addDynamics :: (ToMusicCore a) => Music a -> DynamicsMap -> MusicCore
+addDynamics m' dynMap = do
   let m = toMusicCore m'
   let mCluster = coreToCluster m
   let clusters = cluster mCluster
   -- Generate dynamics for notes per cluster, and then concatenate the clusters.
-  let dynamics = concatMap addDynamicsToCluster clusters
+  let dynamics = concatMap (addDynamicsToCluster dynMap) clusters
   addDynamicsToMCore mCluster dynamics
 
 addDynamicsToMCore ::  MusicCluster -> Cluster -> MusicCore
@@ -29,25 +60,28 @@ addDynamicsToMCore m c =
             -- it in the note.
             fst $ fromJust $ find ((info==) . snd) c
 
-minTime :: [ClusterMusicA] -> AbsStartTime
-minTime m = (fst . snd) (head m)
+bounds :: [ClusterMusicA] -> ((Double, Double),(Double, Double))
+bounds m = ( (fromRational (minimum (map (fst . snd) m)), fromIntegral (minimum (map (snd . snd) m)))
+           , (fromRational (maximum (map (fst . snd) m)), fromIntegral (maximum (map (snd . snd) m)))
+           )
 
-maxTime :: [ClusterMusicA] -> AbsStartTime
-maxTime m = (fst . snd) (last m)
-
-addDynamicsToCluster :: Cluster -> Cluster
-addDynamicsToCluster [] = []
-addDynamicsToCluster c = do
-  let cMin = minTime c
-  let cMax = maxTime c
-  let cLen = cMax - cMin
+addDynamicsToCluster :: DynamicsMap -> Cluster -> Cluster
+addDynamicsToCluster _ [] = []
+addDynamicsToCluster f c  = do
+  let ((minTime,minNote),(maxTime,maxNote)) = bounds c
   -- Returns a value in [0,1] that indicates how far the Note is in the cluster.
-  let progress t = fromRational $ (t - cMin) / cLen
-  let pToDyn ((p,attrs),(t,y)) = do
-          let maxDynNum = fromIntegral (fromEnum (maxBound :: Dynamic)) :: Double
-          let dynNum    = round $ (maxDynNum/2) + ((maxDynNum/4) * sin (2 * pi * progress t))
-          let dyn       = Dynamic (toEnum dynNum :: Dynamic)
-          ((p,dyn:attrs),(t,y))
+  let tProg t = ((fromRational t) - minTime) / (maxTime - minTime)
+  -- Returns a value in [0,1] that indicates how high the Note is in the cluster.
+  let pProg n = ((fromIntegral n) - minNote) / (maxNote - minNote)
+  let pToDyn ((p',attrs),(t,p)) = do
+          let dynDouble = f (tProg t) (pProg p)
+          if dynDouble < 0 || dynDouble > 1 then
+            error "Result from DynamicsMap is not in range [0,1]."
+          else do
+            let maxDynNum = fromIntegral (fromEnum (maxBound :: Dynamic)) :: Double
+            let dynNum    = round (maxDynNum * dynDouble)
+            let dyn       = Dynamic (toEnum dynNum :: Dynamic)
+            ((p',dyn:attrs),(t,p))
   map pToDyn c
 
 -- | Clusters a MusicCluster. The number of clusters is equal to half
