@@ -2,10 +2,8 @@
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 module Grammar.UUHarmony
-       ( harmony, Degree (..)
+       ( uuHarmony
        ) where
-
-import Data.Ratio (denominator, numerator)
 
 import qualified Grammar.Harmony   as H
 import           Grammar.Types
@@ -18,13 +16,9 @@ data Degree =
   | Piece | Phrase | Tonic | Dominant | SubDominant
   deriving (Eq, Show, Enum, Bounded)
 
-harmony :: Grammar H.Modulation Degree
-harmony =
-  let bars4 t = foldl1 (:-:)
-              $ replicate (fromInteger $ quot (numerator t) (denominator t * 4))
-              $ Phrase%:(4 * wn)
-  in
-  [ (Piece, 1, always) :-> \t -> bars4 t
+uuHarmony :: Grammar H.Modulation Degree
+uuHarmony = Piece |:
+  [ (Piece, 1, always) :-> \t -> foldr1 (:-:) $ replicate (t // (4 * wn)) $ Phrase%:(4 * wn)
 
   , (Phrase, 1, always) :-> \t -> Tonic%:t/2 :-: Dominant%:t/4 :-: Tonic%:t/2
   , (Phrase, 1, always) :-> \t -> Dominant%:t/2 :-: Tonic%:t/2

@@ -3,7 +3,6 @@
 module Grammar.Melody
        ( MelodyConfig (..), defMelodyConfig
        , melody, mkSolo
-       , NT (..)
        ) where
 
 import Control.Arrow (first)
@@ -27,7 +26,7 @@ data NT = MQ -- Meta-rhythm
 
 -- | Grammar for melodic lines.
 melody :: Grammar () NT
-melody =
+melody = MQ |:
   [ -- Rhythm { expand MQ(*) to multiple Q(wn), Q(hn) and Q(qn) }
     (MQ, 1, (== 0))      |-> R%:0
   , (MQ, 1, (== qn))     |-> Q%:qn

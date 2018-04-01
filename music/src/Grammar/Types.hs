@@ -6,10 +6,10 @@
 {-# LANGUAGE StandaloneDeriving     #-}
 module Grammar.Types
        ( Weight
-       , Grammar, Rule (..), Head, Activation, Body, Terminal
+       , Grammar (..), Rule (..), Head, Activation, Body, Terminal
        , Term (..), Expand (..), Grammarly
        , runGrammar, always, (/\), (\/)
-       , (-|), (-||), ($:), (|$:), (|->), (%:)
+       , (|:), (-|), (-||), ($:), (|$:), (|->), (%:)
        ) where
 
 import Control.Arrow       (first)
@@ -28,7 +28,11 @@ infix 3 :->
 infix 3 |->
 
 {- Grammar datatypes. -}
-type Grammar meta a = [Rule meta a]
+data Grammar meta a = Grammar { initial :: a, rules :: [Rule meta a] }
+infix 2 |:
+(|:) :: a -> [Rule meta a] -> Grammar meta a
+initA |: rs = Grammar initA rs
+
 data Rule meta a = Head a :-> Body meta a
 type Head a = (a, Weight, Activation)
 type Activation = Duration -> Bool
@@ -91,15 +95,11 @@ toMusic input term = do
 instance Expand input a () a where
   expand = const return
 
--- | A term with no auxiliaries can be trivially expanded.
--- instance (Enum a, Enum b, Expand input a meta c) => Expand input b meta c where
---   expand conf = expand conf . fmap ((toEnum :: Int -> b) . fromEnum)
-
 -- | Run a grammar with the given initial symbol.
 runGrammar :: Grammarly input a meta b
-           => Grammar meta a -> Terminal a -> input -> IO (Music b)
-runGrammar grammar initial input = do
-  rewritten <- fixpoint (go grammar) (Prim initial)
+           => Grammar meta a -> Duration -> input -> IO (Music b)
+runGrammar grammar initT input = do
+  rewritten <- fixpoint (go grammar) (Prim (initial grammar, initT))
   toMusic input rewritten
   where
     -- | Run one term of grammar rewriting.
@@ -114,9 +114,9 @@ runGrammar grammar initial input = do
       return a
     go gram (Aux False meta term) =
       Aux False meta <$> go gram term
-    go gram (Prim term@(a, t)) = do
-      let rules = filter (\((a', _, activ) :-> _) -> a' == a && activ t) gram
-      (_ :-> rewrite) <- pickRule term rules
+    go (Grammar _ rs) (Prim term@(a, t)) = do
+      let rs' = filter (\((a', _, activ) :-> _) -> a' == a && activ t) rs
+      (_ :-> rewrite) <- pickRule term rs'
       return $ rewrite t
 
 {- Grammar-specific operators. -}
@@ -157,13 +157,13 @@ a -| w = (a, w, always) :-> \t -> Prim (a, t)
 {- Helpers. -}
 
 -- | Randomly pick a rule to rewrite given terminal.
-pickRule :: Terminal a -> Grammar meta a -> IO (Rule meta a)
+pickRule :: Terminal a -> [Rule meta a] -> IO (Rule meta a)
 pickRule (a, _) [] = return $ a -| 1
 pickRule _ rs = do
   let totalWeight = sum ((\((_, w, _) :-> _) -> w) <$> rs)
   index <- getStdRandom $ randomR (0, totalWeight)
   return $ pick' index rs
-  where pick' :: Double -> Grammar meta a -> Rule meta a
+  where pick' :: Double -> [Rule meta a] -> Rule meta a
         pick' n (r@((_, w, _) :-> _):rest) =
           if n <= w then r else pick' (n-w) rest
         pick' _ _ = error "pick: empty list"

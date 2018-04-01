@@ -2,10 +2,8 @@
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 module Grammar.TonalHarmony
-       ( harmony, Degree (..)
+       ( tonalHarmony
        ) where
-
-import Data.Ratio (denominator, numerator)
 
 import qualified Grammar.Harmony as H
 import           Grammar.Types
@@ -21,14 +19,10 @@ data Degree =
 (|~>) :: Head [a] -> (a -> Body meta a) -> [Rule meta a]
 (xs, w, activ) |~> k = [(x, w, activ) :-> k x | x <- xs]
 
-harmony :: Grammar H.Modulation Degree
-harmony =
-  let bars4 t = foldl1 (:-:)
-              $ replicate (fromInteger $ quot (numerator t) (denominator t * 4))
-              $ TR%:(4 * wn)
-  in
+tonalHarmony :: Grammar H.Modulation Degree
+tonalHarmony = Piece |:
   [ -- Phrase level
-    (Piece, 1, always) :-> \t -> bars4 t
+    (Piece, 1, always) :-> \t -> foldr1 (:-:) $ replicate (t // (4 * wn)) $ TR%:(4 * wn)
 
     -- Functional level: Expansion
   , (TR, 1, (> wn)) :-> \t -> TR%:t/2 :-: DR%:t/2

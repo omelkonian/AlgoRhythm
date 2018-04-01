@@ -1,15 +1,12 @@
 {-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE ImplicitParams #-}
 module Grammar.Tabla
        ( tabla
-       , tablaTest
        ) where
 
 import Grammar.Types
 import Grammar.Utilities
 import Music
-
-tablaTest :: IO MusicCore
-tablaTest = toMusicCore <$> runGrammar tabla (S, def) ()
 
 -- | Raw MIDI representation.
 newtype MidiNumber = MidiNumber Int
@@ -21,7 +18,7 @@ data TablaNote =
   -- terminals
   Tr | Kt | Dhee | Tee | Dha | Ta | Ti | Ge | Ke | Na | Ra | Noop
   -- non-terminals
-  | S | XI | XD | XJ | XA | XB | XG | XH | XC | XE| XF
+  | Start | S | XI | XD | XJ | XA | XB | XG | XH | XC | XE| XF
   | TA7 | TC2 | TE1 | TF1 | TF4 | TD1 | TB2 | TE4 | TC1 | TB3 | TA8 | TA3 | TB1 | TA1
   deriving (Eq, Show)
 
@@ -45,14 +42,14 @@ instance ToMusicCore TablaNote where
                     Noop -> []
                     _    -> error "Incomplete grammar rewrite"
 
-(|-->) :: a -> [a] -> Rule meta a
-x |--> xs = (x, 1, always) |-> foldl1 (:-:) (map (%: qn) xs)
+(|-->) :: (?tablaBeat :: Duration) => a -> [a] -> Rule meta a
+x |--> xs = (x, 1, always) |-> foldl1 (:-:) (map (%: ?tablaBeat) xs)
 
 -- | Grammar for tabla improvisation.
-tabla :: Grammar () TablaNote
-tabla =
-  [ -- Rhythm { expand MQ(*) to multiple Q(wn), Q(hn) and Q(qn) }
-    S |--> [TE1, XI]
+tabla :: (?tablaBeat :: Duration) => Grammar () TablaNote
+tabla = Start |:
+  [ (Start, 1, always) :-> \t -> foldr1 (:-:) $ replicate (t // (16 * ?tablaBeat)) $ S%:def
+  , S |--> [TE1, XI]
   , XI |--> [TA7, XD]
   , XD |--> [TA8]
   , XI |--> [TF1, XJ]

@@ -19,7 +19,7 @@ newtype Modulation = Modulation Interval deriving (Eq, Show)
 
 -- | Grammar for harmonic structures.
 harmony :: Grammar Modulation Degree
-harmony =
+harmony = I |:
   [ -- Turn-arounds
     (I, 8, (> wn)) :-> \t -> Let (I%:t/2) (\x -> x :-: x)
   , (I, 2, (> wn)) :-> \t -> I%:t/2 :-: I%:t/2
