@@ -19,7 +19,7 @@ import           Data.List                      (find)
 import           Control.Applicative            ((<|>))
 import           System.Directory               (doesFileExist, removeFile)
 
-import           Export                         (musicToE, writeToMidiFile, defaultMIDIConfig, MIDIConfig (..))
+import           Export
 import           Grammar                 hiding ((<|>))
 import           Music
 
@@ -33,10 +33,12 @@ testAndCleanup f t = buildTestBracketed $ do
 midiTests = testGroup "MIDI export"
   [ testAndCleanup "0.midi" $ \f -> testCase "Successfully write to file" $ do
       let res = unsafePerformIO $ do
-                    let ?config = defConfig
-                    m <- final (16 * wn)
-                    writeToMidiFile f defaultMIDIConfig m
-                    doesFileExist f
+                  let ?harmonyConfig = defHarmonyConfig
+                  let ?melodyConfig = defMelodyConfig
+                  let ?midiConfig = defaultMIDIConfig
+                  m <- final (16 * wn)
+                  writeToMidiFile f m
+                  doesFileExist f
       res @?= True
 
   -- Check if the header is correct (HCodecs (which is used by Euterpea))
@@ -60,53 +62,54 @@ midiTests = testGroup "MIDI export"
       let midiHex = "4D546864-00000006-000100000060"
       let m = Rest 0 :: Music Chord
       let byteString = unsafePerformIO $ do
-                                  writeToMidiFile f defaultMIDIConfig m
+                                  let ?midiConfig = defaultMIDIConfig
+                                  writeToMidiFile f m
                                   B.readFile f
       let hex        = concatMap (printf "%02x") (B.unpack byteString)
       let upperHex   = map toUpper hex
       upperHex @?= filter ('-'/=) midiHex
 
-  , testAndCleanup "2.midi" $ \f -> testCase "Sequential music to Euterpea" $ do
+  , testAndCleanup "2.midi" $ \_ -> testCase "Sequential music to Euterpea" $ do
       let ?midiConfig = MIDIConfig (1%2) [AcousticGrandPiano]
-      let m = toMusicCore $ (C#4<|qn :+: Cs#3<|hn)
-      let mE = musicToE c m
-      let mEExpected = Modify (Tempo (1 % 2)) (
-                         Modify (Instrument StringEnsemble2) (
-                           Prim (Note (1 % 4) ((C,4),[]))
-                           :+:
-                           Prim (Note (1 % 2) ((Cs,3),[]))
+      let m = toMusicCore $ C#4<|qn :+: Cs#3<|hn
+      let mE = musicToE m
+      let mEExpected = E.Modify (E.Tempo (1 % 2)) (
+                         E.Modify (E.Instrument E.AcousticGrandPiano) (
+                           E.Prim (E.Note (1 % 4) ((E.C,4),[]))
+                           E.:+:
+                           E.Prim (E.Note (1 % 2) ((E.Cs,3),[]))
                          )
                        )
       mE @?= mEExpected
 
-  , testAndCleanup "3.midi" $ \f -> testCase "Parallel music to Euterpea" $ do
+  , testAndCleanup "3.midi" $ \_ -> testCase "Parallel music to Euterpea" $ do
       let ?midiConfig = MIDIConfig (1%4) [Piccolo]
-      let m = toMusicCore $ (G#1<|qn :=: Ds#6<|hn)
+      let m = toMusicCore $ G#1<|qn :=: Ds#6<|hn
       let mE = musicToE m
-      let mEExpected = Modify (Tempo (1 % 4)) (
-                         Modify (Instrument Piccolo) (
-                           Prim (Note (1 % 4) ((G,1),[]))
-                           :+:
-                           Prim (Note (1 % 2) ((Ds,6),[]))
+      let mEExpected = E.Modify (E.Tempo (1 % 4)) (
+                         E.Modify (E.Instrument Piccolo) (
+                           E.Prim (E.Note (1 % 4) ((E.G,1),[]))
+                           E.:+:
+                           E.Prim (E.Note (1 % 2) ((E.Ds,6),[]))
                          )
                        )
       compareMusic1s mEExpected mE
 
   , testAndCleanup "4.midi" $ \f -> testCase "Sequential music to Midi and back" $ do
-      let c = defaultMIDIConfig
-      let m = toMusicCore $ (C#4<|qn :+: Cs#3<|hn)
-      let mE1 = musicToE c m
+      let ?midiConfig = defaultMIDIConfig
+      let m = toMusicCore $ C#4<|qn :+: Cs#3<|hn
+      let mE1 = musicToE m
       unsafePerformIO $ do
-        writeToMidiFile f c m
+        writeToMidiFile f m
         mE2 <- importFile f >>= \(Right m) -> return (fromMidi m)
-        return $ (preprocess (preprocess mE2)) @?= (preprocess mE1)
+        return $ preprocess (preprocess mE2) @?= preprocess mE1
 
   , testAndCleanup "5.midi" $ \f -> testCase "Parallel music to Midi and back" $ do
-      let c = defaultMIDIConfig
-      let m = toMusicCore $ (G#1<|qn :=: Ds#6<|hn)
-      let mE1 = musicToE c m
+      let ?midiConfig = defaultMIDIConfig
+      let m = toMusicCore $ G#1<|qn :=: Ds#6<|hn
+      let mE1 = musicToE m
       unsafePerformIO $ do
-        writeToMidiFile f c m
+        writeToMidiFile f m
         mE2 <- importFile f >>= \(Right m) -> return (fromMidi m)
         return $ compareMusic1s mE1 mE2
   ]

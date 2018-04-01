@@ -1,4 +1,4 @@
-name: music
+name: AlgoRhythm
 version: 0.1.0.0
 cabal-version: >=1.10
 build-type: Simple
@@ -53,6 +53,7 @@ library
         mtl,
         derive,
         containers,
+        transformers,
         random,
         kmeans
     default-language: Haskell2010
@@ -63,7 +64,7 @@ executable music-exe
     main-is: Main.hs
     build-depends:
         base >=4.7 && <5,
-        music
+        AlgoRhythm
     default-language: Haskell2010
     hs-source-dirs: app
     -- ghc-options: -threaded -rtsopts -with-rtsopts=-N
@@ -74,7 +75,7 @@ test-suite music-test
     other-modules: GenSetup, TMusic, TScore, TMidi, TVec, TGrammar, TGenerate
     build-depends:
         base >=4.7 && <5,
-        music,
+        AlgoRhythm,
         test-framework,
         test-framework-hunit,
         test-framework-quickcheck2,

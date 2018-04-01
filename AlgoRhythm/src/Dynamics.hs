@@ -1,4 +1,5 @@
 module Dynamics ( addDynamics
+                , dyn
                 , sinTimeDynamics
                 , sinPitchDynamics
                 , expPitchDynamics) where
@@ -31,7 +32,7 @@ sinTimeDynamics :: DynamicsMap
 sinTimeDynamics x _ = 0.25 + (0.25 * sin (2 * pi * x))
 
 -- | Returns a dynamic between 0% and 100% volume, based on one full sine
---   oscillation. Note that this sounds rediculous
+--   oscillation. Note that this sounds ridiculous
 sinPitchDynamics :: DynamicsMap
 sinPitchDynamics x _ = 0.25 + (0.25 * sin (2 * pi * x))
 
@@ -40,7 +41,8 @@ sinPitchDynamics x _ = 0.25 + (0.25 * sin (2 * pi * x))
 expPitchDynamics :: DynamicsMap
 expPitchDynamics _ y = max 0.25 (min 0.8 (-log (1 - y)))
 
-
+dyn :: (ToMusicCore a) => Music a -> MusicCore
+dyn m = addDynamics m expPitchDynamics
 
 addDynamics :: (ToMusicCore a) => Music a -> DynamicsMap -> MusicCore
 addDynamics m' dynMap = do

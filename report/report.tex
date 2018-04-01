@@ -1,0 +1,176 @@
+\documentclass[11pt,a4paper]{article}
+
+% Math
+\usepackage{amssymb}
+
+% Geometry
+\usepackage{titling}
+\setlength{\droptitle}{-7em}
+
+% Timeline
+\usepackage{chronosys}
+
+% Code
+\usepackage{minted}
+\usemintedstyle{friendly}
+
+% Tables
+\usepackage{multicol}
+\usepackage{multirow}
+\usepackage{csquotes}
+\usepackage{fullpage}
+
+% Colors
+\usepackage{xcolor, color, colortbl}
+\colorlet{gray}{gray!70}
+\colorlet{green}{green!50}
+\definecolor{darkblue}{HTML}{1D577A}
+\definecolor{rred}{HTML}{C03425}
+\definecolor{darkgreen}{HTML}{8BB523}
+\definecolor{ppurple}{HTML}{6B1B7F}
+\definecolor{pblack}{HTML}{000000}
+\definecolor{darkyellow}{HTML}{C0B225}
+
+% Links
+\usepackage{hyperref}
+\definecolor{linkcolour}{rgb}{0,0.2,0.6}
+\hypersetup{colorlinks,breaklinks,urlcolor=linkcolour,linkcolor=linkcolour,citecolor=blue}
+
+% Graphics
+\usepackage{graphics}
+\graphicspath{{figures/}} % Location of the graphics files
+
+% Title
+\title{\textbf{Final Report \\ \small{Advanced Functional Programming}}}
+\author{\small{Joris ten Tusscher, Cas van der Rest, Orestis Melkonian}}
+\date{}
+
+% Macros
+\newcommand{\site}[1]{\footnote{\url{#1}}}
+\newcommand{\icode}[1]{\mintinline{haskell}{#1}}
+\newcommand\todo[1]{\textcolor{red}{#1}}
+
+\begin{document}
+\maketitle
+
+\section{Domain}
+We set out to implement a Haskell library for algorithmic music composition.
+\subsection{Algorithmic music composition}
+The process of algorithmic music composition is mostly helpful as an additional aid to a composer's toolbox, allowing for generation of vast and highly diverse musical material. The composer's role then is to refine this material by identifying interesting segments and combine them in a tasteful, coherent whole.
+\subsection{Music representation}
+An immediate requirement to facilitate algorithmic music composition is the ability to concisely represent music. One could use the universal standard for musicians of western music, namely sheet scores. This representation, although incredibly helpful for real-time interpretation by human performers, is not fitted to computational manipulation. An appropriate representation would utilize the added expressiveness computation bestows upon us.
+
+We refrain from taking music analysis into consideration, since it is outside the scopes of our library and could be independently performed at a separate stage of a composer's workflow. Hence, we do not provide any functionality  to pre-existing pieces of music.
+
+\subsection{Music generation}
+Apart from representing music, there is a need to randomly generate a variety of interesting musical pieces. Furthermore, one would want to have some control over the generation procedure, such as requiring the output of melodies respecting a specific structural rule.
+
+Naturally, our library should output generated music in some common format. We chose to support common sheet notation in PDF and digital formatting in MIDI.
+
+\subsection{Motivation}
+This project is an homage to the late Paul Hudak, one of the creators of Haskell and professional jazz pianist. His work combined functional programming and computer music, which essentially gave birth to this particular line of research (for current work, see ICFP's \href{https://icfp17.sigplan.org/track/farm-2017-papers}{FARM} workshop). We were greatly influenced by his general datatype-oriented view of polymorphic temporal media \cite{temporal}, his music Haskell library \href{http://euterpea.com}{Euterpea} and his linguistic approach to music generation \cite{hudak}.
+
+\section{Main Concepts \& Techniques}
+
+\subsection{Representation DSL}
+For representing music, we defined a highly-abstract \icode{Music} datatype, polymorphic to the specific elements of music manipulated through time. Hence, this datatype only specifies the operations invariant across all such specific representation, such as sequential/parallel composition of music and basic construction of music events or silence (of a certain duration), as shown below:
+\begin{center}\begin{minipage}{0.5\textwidth}\begin{minted}[baselinestretch=1.1, fontsize=\small]{haskell}
+data Music a = Music a :+: Music a
+             | Music a :=: Music a
+             | Note Duration a
+             | Rest Duration
+\end{minted}
+\end{minipage}
+\end{center}
+
+Since our datatype is polymorphic, we can freely change abstraction levels of music representation (as can be witnessed by our applications). To allow for playback/rendering/exporting, we define a core representation \icode{MusicCore = Music (Pitch, Attributes)}, which every other abstraction should convert to.
+
+Futhermore, we define common constants (e.g. scales, chords), useful types of music (e.g. \icode{Melody = Music Pitch}, \icode{Rhythm = Music ()}, \icode{Harmony = Music Chord}), as well as operations often used in algorithmic music composition, such as transposition, inversion, mirroring, scaling and repetition. These are implemented as typeclasses, since multiple music types could be manipulated in the same way (e.g. we could transpose both a \icode{Pitch} and a \icode{Scale}).
+
+\subsection{Export functionality}
+\todo{lilypond, MIDI, etc...}
+
+\subsection{Generation}
+\todo{monadic interface, selectors, etc...}
+
+\subsection{Grammars}
+To accommodate a linguistic approach to music generation, we provide a DSL for defining generative grammars. These are similar to context-free grammars, with the addition of being probabilistic (i.e. allow assigning weights to individual rules), temporal (i.e. rules are parametric to duration) and node-sharing (i.e. allow repetition of generated symbols using \textit{let}-expressions).
+
+For brevity's sake, we eschew a formal definition of our grammars, and immediately give the definitions of the corresponding Haskell datatypes. We also refer the reader to our \href{https://github.com/omelkonian/AlgoRhythm/blob/master/AlgoRhythm/src/Grammar}{grammar implementations} for examples.
+\begin{minted}[baselinestretch=1.1, fontsize=\small]{haskell}
+data Grammar meta a = Grammar { initial :: a, rules :: [Rule meta a] }
+data Rule meta a = (a, Weight, Duration -> Bool) :-> (Duration -> Term meta a)
+data Term meta a = Prim (a, Duration)                             -- primitive
+                 | Term meta a :-: Term meta a                     -- sequence
+                 | Aux Bool meta (Term meta a)          -- auxiliary modifiers
+                 | Let (Term meta a) (forall b. Term () b -> Term () b) -- let
+\end{minted}
+
+Given an initial symbol and some initial value of type \icode{input}, the grammar expansion will begin rewriting by a randomly-picked activated rule, up to fixpoint. A rule's body can be a primitive terminal symbol of a certain duration, a sequence of terms, a term wrapped with auxiliary metadata which will be used in a post-processing step, or a let-expression of a term, which will share a rewritten term in the let's body (when fixpoint is reached).
+
+The symbol type \icode{a} along with the metadata type \icode{meta} and the input type \icode{input} must be implement a way to strip off metadata (possibly converting to some more concrete representation. This is captured by the \textit{Expand} typeclass:
+\begin{center}\begin{minipage}{0.6\textwidth}\begin{minted}[baselinestretch=1.1, fontsize=\small]{haskell}
+class Expand input a meta b | input a meta -> b where
+  expand :: input -> Term meta a -> IO (Term () b)
+\end{minted}
+\end{minipage}
+\end{center}
+
+When the aforementioned fixpoint is reached, we are left with metadata-enriched terms and \textit{let}-expressions. The expansion proceeds as follows: the auxililary metadata are stripped-off (by \icode{expand}) and the \textit{let}-expressions are unfolded. This is then trivially converted to our \icode{Music} datatype, since we only have to deal with primitive values (i.e. \icode{Notes}) and sequential composition (i.e. \icode{:+:}).
+
+\subsection{Dynamic performance}
+\todo{k-means clustering, etc...}
+
+
+\section{Results}
+\subsection{Music DSL}
+To showcase the expressive power of our DSL for representing and manipulating music, we present a very short piece of code, which however employs a variery of operators (transposition, retrograde, time-scaling, delay) and generates a rather complex musical effect (\href{https://github.com/omelkonian/AlgoRhythm/blob/master/output/hypnotic.wav}{audio}):
+\begin{minted}[baselinestretch=1.1, fontsize=\small]{haskell}
+hypnotic :: Melody
+hypnotic = 2%5 *~ cascades :+: (cascades ><)
+  where cascades = rep id      (%> sn) 2 cascade
+        cascade  = rep (~> M3) (%> en) 5 run
+        run      = rep (~> P4) (%> tn) 5 (D#3 <| tn)
+        rep :: (Melody -> Melody) -> (Melody -> Melody) -> Int -> Melody -> Melody
+        rep _ _ 0 _ = (0~~)
+        rep f g n m = m :=: g (rep f g (n - 1) (f m))
+\end{minted}
+
+\todo{genDSL+chaos example}
+
+\subsection{Grammars}
+To showcase the generative power of our grammars, we implement grammars all basic elements of music, namely harmony, melody and rhythm. To save space, we only explain the intuition behind each grammar and refer the reader to the actual implementations.
+
+\subsubsection{Tonal harmony [\href{https://github.com/omelkonian/AlgoRhythm/blob/master/AlgoRhythm/src/Grammar/TonalHarmony.hs}{code}]}
+Harmonic structure is argued to exhibit recursion and hierarchical organization, hence fit nicely to our grammar framework. We directly implement the generative grammar proposed by Rohrmeier\cite{tonal}, which captures harmonies on diatonic cadences (i.e. movements between chords of a different degree in some scale). The grammar is based on a Schenkarian view of harmony\cite{schenker}, namely the abstraction of an elaborate chord progression as a single scale degree. For instance, the cadence V-I can be seen as a harmonic element based on the tonic (I).
+
+The grammar rewrites basic scale degrees into more elaborate ones, making sure the produced chord progressions have appropriate durations. One important addition is that of \textit{key modulation}, where an auxiliary key wraps a grammar term and makes the generated sub-progression be interpreted in a transposed key from the original. This is handled particularly well by our \icode{Aux} terms and \icode{Expand} typeclass.
+
+\subsubsection{Jazz melodic improvisation [\href{https://github.com/omelkonian/AlgoRhythm/blob/AlgoRhythm/music/src/Grammar/Melody.hs}{code}]}
+For melodic improvisation, we implemented the context-free grammar behind the open-source educational tool Impro-Visor\cite{improvisor}, which aims to train novice musicians in jazz improvisation. The grammar consists of two-levels, one to produce an interesting rhythmic structure of a given length and one to fill these values with notes having a certain function against some harmonic context (e.g. chord tones, approach tones). However, these could be inhabited by many possible concrete pitches, therefore a stochastic post-processing step heuristically assigns theses values (based on pitch distance and preferred octaves). This grammar does not use the metadata-enrichment features of our grammars.
+
+\subsubsection{Tabla rhythmic improvisation [\href{https://github.com/omelkonian/AlgoRhythm/blob/AlgoRhythm/music/src/Grammar/Tabla.hs}{code}]}
+Last but not least, we implement a grammar for improvising rhythmic sequences for Tabla, an Indian percussion instrument. We base our implementation on a proposed grammar used in the expert system \textit{Bol Processor BL1}\cite{tabla}. The rules operate on a fixed number of syllables, since this is how Tabla music is written (i.e. each syllable corresponds to a particular stroke of the drum set).\vspace{-3mm}
+\paragraph{Technical note} Since there is no standard MIDI encoding of tabla sounds, we had to provide a custom MIDI mapping from notes to percussion sounds. Interestingly, this was elegantly modelled by our \icode{ToMusicCore} typeclass, which provided the custom mapping.
+
+\subsection{Dynamic performance}
+\todo{combine with previous section?}
+
+\subsection{Magnum Opus [\href{https://github.com/omelkonian/AlgoRhythm/blob/master/AlgoRhythm/src/app/MagnusOpus.hs}{code}]} We accumulate our results in a musical piece automatically generated by our library (up to instrument assignment). We attach the corresponding musical score in the appendix and provide an \href{https://github.com/omelkonian/AlgoRhythm/blob/master/output/suite.wav}{audio link} in our Github repository.
+
+\section{Reflection}
+\todo{more type trickery}\\
+\todo{GenDSL abstraction}\\
+
+Regarding grammars, one problem we were not able to overcome, was implementing a grammar for jazz chord progressions, as proposed by Steedman\cite{jazzchords}, since it required context-sensitive features and that would make our grammar implementation overly complicated and necessarily slower.\\
+
+\newpage
+\section*{\textsc{APPENDIX}: Suite for Koto, Sitar, \& Tablas}
+\todo{generate score/audio}
+%\includegraphics[scale=0.8]{piece.pdf}
+
+\newpage
+\bibliographystyle{ieeetr}
+\bibliography{sources}
+
+\end{document}

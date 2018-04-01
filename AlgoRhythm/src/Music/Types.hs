@@ -118,7 +118,7 @@ instance Foldable Music where
   foldMap _ _          = mempty
 
 instance Enum FullPitch where
-  fromEnum ((pc,oct),_) = (fromEnum oct) *mOct + (fromEnum pc)
+  fromEnum ((pc,oct),_) = fromEnum oct * mOct + fromEnum pc
   toEnum   i            = ((toEnum (i `mod` mOct), toEnum (i `div` mOct)),[])
 mOct :: Int
 mOct = fromEnum (maxBound :: Octave)

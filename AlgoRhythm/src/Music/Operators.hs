@@ -1,9 +1,10 @@
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE PostfixOperators      #-}
 module Music.Operators
        ( (#), (<#)
-       , (<|), (<||)
+       , (<|), (<||), (%>)
        , (=|), (+|)
        , (<:)
        , (~~)
@@ -17,7 +18,7 @@ infix  9 #, ~~
 infix  8 <:
 infix  7 <|
 infix  6 =|, +|
-infixl 5 <#, <||
+infixl 5 <#, <||, %>
 
 -- Constructors.
 (~~) :: Duration -> Music a
@@ -37,6 +38,9 @@ p <: attrs = (p, attrs)
 
 (<||) :: [Pitch] -> Duration -> [Music Pitch]
 (<||) sc d = (<| d) <$> sc
+
+(%>) :: Music a -> Duration -> Music a
+m %> d = (d~~) :+: m
 
 -- Instantiating chords/scales.
 (=|), (+|) :: (Abstract rep a inst) => a -> rep -> inst
