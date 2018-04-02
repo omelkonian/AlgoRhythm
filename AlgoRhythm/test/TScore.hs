@@ -19,8 +19,8 @@ scoreTests = testGroup "Score"
       let res = do let f = "test.ly"
                    let ?harmonyConfig = defHarmonyConfig
                    let ?melodyConfig = defMelodyConfig
-                   m <- final (2 * wn) -- TODO larger pieces eat up RAM :(
-                   _ <- writeToLilypondFile f m
+                   (back, fore) <- integrate (2 * wn) -- TODO larger pieces eat up RAM :(
+                   _ <- writeToLilypondFile f (back :=: fore)
                    doesFileExist f
       in  unsafePerformIO res @?= True,
     testCase "Split a note duration into powers of 2" $
