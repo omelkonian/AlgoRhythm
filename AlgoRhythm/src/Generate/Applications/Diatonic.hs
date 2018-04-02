@@ -21,6 +21,7 @@ module Generate.Applications.Diatonic where
 
   -- | Sample weights for note durations during a cerain density
   densityToDurations :: Density -> [(Weight, Duration)]
+  -- High density phrases
   densityToDurations High =
     [ (0.05, 1%32)
     , (0.15, 1%16)
@@ -28,6 +29,7 @@ module Generate.Applications.Diatonic where
     , (0.30, 1%4)
     , (0.05, 1%2)
     ]
+  -- Medium density phrases
   densityToDurations Medium =
     [ (0.02, 1%16)
     , (0.05, 1%8)
@@ -35,6 +37,7 @@ module Generate.Applications.Diatonic where
     , (0.30, 1%2)
     , (0.05, 1%1)
     ]
+  -- Low density phrases
   densityToDurations Low =
     [ (0.10, 1%8)
     , (0.40, 1%4)
@@ -80,6 +83,8 @@ module Generate.Applications.Diatonic where
     map (\(a, b) -> (a, instantiate key b)) $
       filter (\(a, b) -> b `elem` scale) relativeWeights
 
+  -- Convert a SemiChord to a list representing the relative
+  -- importance of each note in the key the chord is played in.
   semiChordWeights :: PitchClass -> SemiChord
                                  -> [(Weight, PitchClass)]
   semiChordWeights key chord =
@@ -88,6 +93,8 @@ module Generate.Applications.Diatonic where
       (\pc ->
         relativeWeights!!(
           ((12 +
+            -- Find relative weights in the given key
+            -- for the pitchclasses in the provided chord
             ((fromEnum ([C .. B]!!(fromEnum pc))) -
             (fromEnum ([C .. B]!!(fromEnum key)))))
           `mod` 12)
@@ -142,15 +149,21 @@ module Generate.Applications.Diatonic where
                                      -> [(Weight, a)]
   getDistributions el k xs =
       case idx of
+        -- Check if the given element is in fact
+        -- an element of the given list
         (Just _)  -> (map (\(w, v) -> (getWeight v w, v)) xs)
         (Nothing) -> xs
     where idx = (elemIndex el (stripList xs))
+          -- A the weight for an element is related to the distance
+          -- between that element and the previously generated element
+          -- by a negative exponential distribution
           getWeight el' ow | el == el' = ow * 0.5
           getWeight el' ow | otherwise =
             ow * k^^(0 - abs((fromJust idx) -
               (fromJust (elemIndex el' (stripList xs )))))
           -- TODO include trends in distribution
 
+  -- Strip a weighted list to it's elements
   stripList :: [(Weight, a)] -> [a]
   stripList = map snd
 
@@ -197,6 +210,10 @@ module Generate.Applications.Diatonic where
     return $ line
       (zipWith (<|) fullPitches durations)
 
+  -- | Generate a diatonic melody over a given chord progression. This is done by
+  --   generating separate phrases that are linked together with a rest in
+  --   between. The phraseses are aware of the chord they are over, so that they
+  --   will use notes from the current chord with a higher probability.
   diatonicMelody :: GenConfig -> MusicGenerator () MusicCore
   diatonicMelody config=
     let timeline = chordalTimeline (chords config)
@@ -219,6 +236,10 @@ module Generate.Applications.Diatonic where
                          remainder (x:y:xs) p | p < snd y = (y:xs)
                                               | otherwise = remainder (y:xs) p
 
+  -- | Generate a (random) length for a phrase. A higher density will result in
+  --   phrases with more notes allowed, in order to enforce that the average
+  --   high density phrase will take roughly the same amount of time as the
+  --   average low density phrase.
   phraseLength :: Density -> IO Duration
   phraseLength density = do
     aux <- generate $ oneof
@@ -232,6 +253,7 @@ module Generate.Applications.Diatonic where
                 Medium -> 16
                 High   -> 32
 
+  -- | Choose a random rest length
   pauseLength :: IO Duration
   pauseLength = do
     aux <- generate $ oneof
@@ -240,15 +262,20 @@ module Generate.Applications.Diatonic where
       )
     return $ aux * en
 
+  -- | Generate an element from a distribution
   fromDistribution :: [(Int, a)] -> IO a
   fromDistribution dist = do
     sample <- generate $ frequency
       (map (\(x, y) -> (x, elements [y])) dist)
     return sample
 
+  -- | Convert a sequential piece of music to a timeline, containing pairs of
+  --   all musical elements in the piece with the point in time they occur on
   chordalTimeline :: Music SemiChord -> [(SemiChord, Duration)]
   chordalTimeline chords = getTimeline (toListM chords) 0
 
+  -- | Convert a list of musical elements and durations to a list
+  --   of all elements and the absolute point in time they occur on.
   getTimeline :: [(Maybe a, Duration)] -> Duration -> [(a, Duration)]
   getTimeline []     _ = []
   getTimeline ((x, y):xs) p =
@@ -256,11 +283,13 @@ module Generate.Applications.Diatonic where
       Nothing  -> getTimeline xs (p + y)
       (Just v) -> (v, p):getTimeline xs (p + y)
 
+  -- | Trim a generated rhythm sequence to a certain length.
   trimToLength :: Duration -> [Duration] -> [Duration]
   trimToLength d [] = []
   trimToLength d (x:xs) | d - x <= 0 = [d]
   trimToLength d (x:xs) | otherwise  = x:(trimToLength (d - x) xs)
 
+  -- | Generate a rythm piece with a maximum length.
   boundedRhythm :: Duration -> Density -> MusicGenerator () [Duration]
   boundedRhythm bound density = do
     dur <- (duration??)
@@ -280,6 +309,5 @@ module Generate.Applications.Diatonic where
     TODO: Chord generation
     TODO: pitch attributes
     TODO: time-awareness
-    TODO: generate larger structures with higher level parameters, which may
     be instantiated to a concrete piece of music
   -}
