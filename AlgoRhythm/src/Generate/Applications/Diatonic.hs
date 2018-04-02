@@ -16,31 +16,30 @@ module Generate.Applications.Diatonic where
   import Grammar.Utilities
   import Test.QuickCheck
   import Test.QuickCheck.Gen
+  import Generate.Applications.GenConfig
 
-  -- | Denotes the global note density in a piece of music
-  data Density = High | Medium | Low
 
   -- | Sample weights for note durations during a cerain density
   densityToDurations :: Density -> [(Weight, Duration)]
   densityToDurations High =
-    [ (0.20, 1%32)
-    , (0.35, 1%16)
-    , (0.45, 1%8)
-    , (0.10, 1%4)
+    [ (0.05, 1%32)
+    , (0.15, 1%16)
+    , (0.55, 1%8)
+    , (0.30, 1%4)
     , (0.05, 1%2)
     ]
   densityToDurations Medium =
-    [ (0.10, 1%16)
-    , (0.10, 1%8)
-    , (0.35, 1%4)
-    , (0.20, 1%2)
+    [ (0.02, 1%16)
+    , (0.05, 1%8)
+    , (0.55, 1%4)
+    , (0.30, 1%2)
     , (0.05, 1%1)
     ]
   densityToDurations Low =
     [ (0.10, 1%8)
-    , (0.20, 1%4)
-    , (0.20, 1%2)
-    , (0.20, 1%1)
+    , (0.40, 1%4)
+    , (0.40, 1%2)
+    , (0.10, 1%1)
     ]
 
   -- | Weights table containing the relative 'importance' of all
@@ -111,7 +110,7 @@ module Generate.Applications.Diatonic where
                ((not . (flip elem) (stripList xs)) . snd) ys'
              ) ++
              -- ys /\ ys, with weights summed
-             zipWith (\(x1, x2) (y1, _) -> (x1 + y1, x2))
+             zipWith (\(x1, x2) (y1, _) -> ((x1 + y1) / 2, x2))
                (filter ((flip elem) intersection . snd) xs')
                (filter ((flip elem) intersection . snd) ys')
     where -- Normalize a distribution such that all weights sum to 1
@@ -146,7 +145,8 @@ module Generate.Applications.Diatonic where
         (Just _)  -> (map (\(w, v) -> (getWeight v w, v)) xs)
         (Nothing) -> xs
     where idx = (elemIndex el (stripList xs))
-          getWeight el' ow =
+          getWeight el' ow | el == el' = ow * 0.5
+          getWeight el' ow | otherwise =
             ow * k^^(0 - abs((fromJust idx) -
               (fromJust (elemIndex el' (stripList xs )))))
           -- TODO include trends in distribution
@@ -179,12 +179,14 @@ module Generate.Applications.Diatonic where
                              -> PitchClass
                              -> [Interval]
                              -> SemiChord
+                             -> [(Int, Octave)]
                              -> MusicGenerator () MusicCore
-  diatonicPhrase dur density key scale chord = do
+  diatonicPhrase dur density key scale chord octD = do
     durations <- boundedRhythm dur density
 
     octaves <- genAspect octave 4
-      (length durations) 2.0 [(0.6, 4), (0.4, 5)]
+      (length durations) 2.0
+        (map (Arrow.first fromIntegral) octD)
 
     pitches <- genAspect pitchClass key
       (length durations) 1.3
@@ -195,27 +197,27 @@ module Generate.Applications.Diatonic where
     return $ line
       (zipWith (<|) fullPitches durations)
 
-  diatonicMelody :: Music SemiChord -> PitchClass
-                                    -> [Interval]
-                                    -> Duration
-                                    -> MusicGenerator () MusicCore
-  diatonicMelody chords key scale dur | otherwise =
-    let timeline = chordalTimeline chords
-      in f timeline dur
-    where f tl dur | dur <= 0  = return (Rest 0)
-          f tl dur | otherwise =
-            do density <- lift phraseDensity
+  diatonicMelody :: GenConfig -> MusicGenerator () MusicCore
+  diatonicMelody config=
+    let timeline = chordalTimeline (chords config)
+      in f timeline 0
+    where f [] pos = return $  Rest 0
+          f tl pos =
+            do density <- lift (fromDistribution (phraseDistribution config))
                len     <- lift $ phraseLength density
                pause   <- lift pauseLength
                phrase <- diatonicPhrase
-                 len density key scale (fst $ head tl)
-               r <- f (remainder tl (len + pause)) (dur - (len + pause))
+                 len density
+                 (key config)
+                 (baseScale config)
+                 (fst $ head tl)
+                 (octaveDistribution config)
+               r <- f (remainder tl (pos + len + pause)) (pos + len + pause)
                return $ phrase :+: (Rest pause) :+: r
-
                    where remainder []       _ = []
                          remainder [x]      _ = []
-                         remainder (x:y:xs) d | d < snd y = (y:xs)
-                                              | otherwise = remainder (y:xs) d
+                         remainder (x:y:xs) p | p < snd y = (y:xs)
+                                              | otherwise = remainder (y:xs) p
 
   phraseLength :: Density -> IO Duration
   phraseLength density = do
@@ -238,12 +240,11 @@ module Generate.Applications.Diatonic where
       )
     return $ aux * en
 
-  phraseDensity :: IO Density
-  phraseDensity = generate $ frequency
-    [ (1, elements [High])
-    , (5, elements [Medium])
-    , (3, elements [Low])
-    ]
+  fromDistribution :: [(Int, a)] -> IO a
+  fromDistribution dist = do
+    sample <- generate $ frequency
+      (map (\(x, y) -> (x, elements [y])) dist)
+    return sample
 
   chordalTimeline :: Music SemiChord -> [(SemiChord, Duration)]
   chordalTimeline chords = getTimeline (toListM chords) 0

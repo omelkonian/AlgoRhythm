@@ -7,6 +7,7 @@ import Dynamics
 import Export
 import Grammar
 import Music
+import qualified Generate as Gen
 
 main :: IO ()
 main = do
@@ -23,15 +24,131 @@ main = do
   harmonicStructure <- runGrammar uuHarmony t ?harmonyConfig
   background <- voiceLead harmonicStructure
 
-  -- Melody.
-  let ?melodyConfig = defMelodyConfig
-        { scales  = equally allScales
-        , octaves = [(1, Oct3), (20, Oct4), (15, Oct5), (1, Oct6)]
+  let melodyConfig = Gen.GenConfig
+        { Gen.key                = C
+        , Gen.baseScale          = japanese
+        , Gen.chords             = harmonicStructure
+        , Gen.phraseDistribution = [(1, Gen.High), (1, Gen.Medium), (2, Gen.Low)]
+        , Gen.octaveDistribution = [(1, 3), (3, 4), (2, 5)]
         }
-  melodicStructure <- runGrammar melody t ()
-  foreground <- mkSolo harmonicStructure melodicStructure
+  foreground <- Gen.runGenerator () (Gen.diatonicMelody melodyConfig)
 
   playDev 4 $ 2 ## dyn (toMusicCore background :=: toMusicCore foreground)
+
+--
+jazz :: IO ()
+jazz = do
+  let ?midiConfig = MIDIConfig (3%4) [AcousticGrandPiano]
+  let t = 12 * wn
+
+  -- Harmony.
+  let ?harmonyConfig = HarmonyConfig
+        { basePc  = D
+        , baseOct = Oct4
+        , baseScale = dorian
+        , chords  = equally [maj, mi, maj7, m7, dim, d7, m7b5]
+        }
+  harmonicStructure <- runGrammar uuHarmony t ?harmonyConfig
+  background <- voiceLead harmonicStructure
+
+  let melodyConfig = Gen.GenConfig
+        { Gen.key                = D
+        , Gen.baseScale          = dorian
+        , Gen.chords             = harmonicStructure
+        , Gen.phraseDistribution = [(4, Gen.High), (7, Gen.Medium), (2, Gen.Low)]
+        , Gen.octaveDistribution = [(2, 3), (7, 4), (4, 5)]
+        }
+  foreground <- Gen.runGenerator () (Gen.diatonicMelody melodyConfig)
+
+  writeToMidiFile "out.midi" (foreground :=: toMusicCore background)
+
+-- A piece with fast banjo playing
+fastBanjo :: IO ()
+fastBanjo = do
+  let ?midiConfig = MIDIConfig (6%4) [Banjo, ElectricGuitarMuted]
+  let t = 32 * wn
+
+  -- Harmony.
+  let ?harmonyConfig = HarmonyConfig
+        { basePc  = C
+        , baseOct = Oct4
+        , baseScale = ionian
+        , chords  = equally [maj, mi, dim]
+        }
+  harmonicStructure <- runGrammar uuHarmony t ?harmonyConfig
+  background <- voiceLead harmonicStructure
+
+  let melodyConfig = Gen.GenConfig
+        { Gen.key                = C
+        , Gen.baseScale          = ionian
+        , Gen.chords             = harmonicStructure
+        , Gen.phraseDistribution = [(1, Gen.High), (0, Gen.Medium), (0, Gen.Low)]
+        , Gen.octaveDistribution = [(3, 3), (5, 4), (2, 5)]
+        }
+  foreground <- Gen.runGenerator () (Gen.diatonicMelody melodyConfig)
+
+  writeToMidiFile "out.midi" (((Rest $ 4 * wn) :+: foreground) :=: toMusicCore background)
+
+rockOrganBlues :: IO ()
+rockOrganBlues = do
+  let ?midiConfig = MIDIConfig (6%4) [RockOrgan, AcousticGrandPiano]
+  let t = 32 * wn
+
+  let ?harmonyConfig = HarmonyConfig
+        { basePc  = C
+        , baseOct = Oct4
+        , baseScale = ionian
+        , chords  = equally [maj, mi, dim]
+        }
+
+  let harmonicStructure = foldr1 (:+:) $
+        map (Note hn . uncurry instantiate)
+          [ (E, d7)
+          , (E, d7)
+          , (E, d7)
+          , (E, d7)
+          , (E, d7)
+          , (E, d7)
+          , (E, d7)
+          , (E, d7)
+          , (A, d7)
+          , (A, d7)
+          , (A, d7)
+          , (A, d7)
+          , (E, d7)
+          , (E, d7)
+          , (E, d7)
+          , (E, d7)
+          , (B, d7)
+          , (B, d7)
+          , (A, d7)
+          , (A, d7)
+          , (E, d7)
+          , (E, d7)
+          , (B, d7)
+          , (B, d7)
+          ]
+  let background = (flip (<#)) 3 <$> harmonicStructure
+
+  let melodyConfig = Gen.GenConfig
+        { Gen.key                = E
+        , Gen.baseScale          = blues
+        , Gen.chords             = 2##harmonicStructure
+        , Gen.phraseDistribution = [(5, Gen.High), (5, Gen.Medium), (1, Gen.Low)]
+        , Gen.octaveDistribution = [(3, 3), (5, 4), (2, 5)]
+        }
+  foreground <- Gen.runGenerator () (Gen.diatonicMelody melodyConfig)
+
+  let melodyConfig' = Gen.GenConfig
+        { Gen.key                = E
+        , Gen.baseScale          = pentatonicMajor
+        , Gen.chords             = 2##harmonicStructure
+        , Gen.phraseDistribution = [(5, Gen.High), (5, Gen.Medium), (1, Gen.Low)]
+        , Gen.octaveDistribution = [(2, 3), (5, 4), (2, 5)]
+        }
+  foreground' <- Gen.runGenerator () (Gen.diatonicMelody melodyConfig)
+
+  writeToMidiFile "out.midi" ((foreground :+: foreground') :=: toMusicCore (4##background))
 
 -- Hypnotic passage.
 hypnotic :: Melody
