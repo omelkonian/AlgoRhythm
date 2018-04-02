@@ -1,4 +1,4 @@
-  {-# LANGUAGE ImplicitParams #-}
+{-# LANGUAGE ImplicitParams #-}
 module Generate.QuickCheck where
 
 import Music
@@ -22,7 +22,7 @@ quickCheckState st = GenState { state = st
                               , pc    = quickCheckEntry st
                               , oct   = quickCheckEntry st
                               , dur   = Entry { values      =
-                                                  zip (repeat 1) [1%1,1%2,1%4,1%8,1%16]
+                                                  zip (repeat 1) [1%1,1%2,1%4,1%8,1%16,1%32]
                                               , constraints = []
                                               , selector    = quickCheckSelector
                                               }
