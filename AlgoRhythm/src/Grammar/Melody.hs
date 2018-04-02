@@ -1,5 +1,5 @@
-{-# LANGUAGE ImplicitParams        #-}
-{-# LANGUAGE PostfixOperators      #-}
+{-# LANGUAGE ImplicitParams   #-}
+{-# LANGUAGE PostfixOperators #-}
 module Grammar.Melody
        ( MelodyConfig (..), defMelodyConfig
        , melody, mkSolo
@@ -62,7 +62,6 @@ melody = MQ |:
 
   , (N, 50, (== qn)) |-> CT%:qn
   , (N, 50, (== qn)) |-> ST%:qn
-  -- , (N, 25, (== qn)) |-> R%:qn
   , (N, 45, (== qn)) |-> R%:qn
   , (N, 20, (== qn)) |-> L%:qn
   , (N,  1, (== qn)) |-> AT%:qn
@@ -70,7 +69,6 @@ melody = MQ |:
   , (N, 40, (== en)) |-> CT%:en
   , (N, 40, (== en)) |-> ST%:en
   , (N, 20, (== en)) |-> L%:en
-  -- , (N, 10, (== en)) |-> R%:en
   , (N, 20, (== en)) |-> R%:en
   , (N,  1, (== en)) |-> AT%:en
   ]
@@ -163,12 +161,18 @@ mkSolo chs nts =
 
 -- | Configuration for melody.
 data MelodyConfig = MelodyConfig
-  { scales    :: [(Weight, AbstractScale)]
-  , octaves   :: [(Weight, Octave)]
+  { scales         :: [(Weight, AbstractScale)]
+  , octaves        :: [(Weight, Octave)]
+  , chordWeight    :: Weight
+  , approachWeight :: Weight
+  , colorWeight    :: Weight
   }
 
 defMelodyConfig :: MelodyConfig
 defMelodyConfig = MelodyConfig
   { scales = equally allScales
   , octaves = equally allOctaves
+  , chordWeight = 10
+  , approachWeight = 5
+  , colorWeight = 3
   }

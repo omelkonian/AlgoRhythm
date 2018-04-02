@@ -43,7 +43,7 @@ tonalHarmony = Piece |:
   ] ++
   (([TS, DS, SS], 1, (>= hn)) |~> \x t -> (H.Modulation P5 $: x%:t/2) :-: x%:t/2) ++
   [ -- Scale-degree level: Functional-Scale interface
-    (TS, 1, (>= wn)) :-> \t -> I%:t/3 :-: IV%:t/3 :-: I%:t/3
+    (TS, 1, (>= wn)) :-> \t -> I%:t/2 :-: IV%:t/4 :-: I%:t/4
   , (TS, 1, always) :-> (I %:)
   , (SS, 1, always) :-> (IV %:)
   , (DS, 1, always) :-> (V %:)

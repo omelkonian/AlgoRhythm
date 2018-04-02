@@ -34,6 +34,7 @@ cabal.project.local
 **/_minted*/
 # Output
 *.midi
+*.mid
 *.ly
 *.ps
 *.pdf

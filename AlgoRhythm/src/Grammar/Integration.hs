@@ -21,4 +21,4 @@ final t = do
   melodicStructure <- runGrammar melody t ()
   background <- voiceLead harmonicStructure
   foreground <- mkSolo harmonicStructure melodicStructure
-  return $ addDynamics ((toMusicCore background) :=: (toMusicCore foreground))
+  return $ addDynamics ((toMusicCore background) :=: (toMusicCore foreground)) expPitchDynamics

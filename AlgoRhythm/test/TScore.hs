@@ -17,7 +17,8 @@ import Music
 scoreTests = testGroup "Score"
   [ testCase "successfully write to file" $
       let res = do let f = "test.ly"
-                   let ?config = defConfig
+                   let ?harmonyConfig = defHarmonyConfig
+                   let ?melodyConfig = defMelodyConfig
                    m <- final (2 * wn) -- TODO larger pieces eat up RAM :(
                    _ <- writeToLilypondFile f m
                    doesFileExist f
