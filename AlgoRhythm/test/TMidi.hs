@@ -36,8 +36,8 @@ midiTests = testGroup "MIDI export"
                   let ?harmonyConfig = defHarmonyConfig
                   let ?melodyConfig = defMelodyConfig
                   let ?midiConfig = defaultMIDIConfig
-                  m <- final (16 * wn)
-                  writeToMidiFile f m
+                  (back, fore) <- integrate (16 * wn)
+                  writeToMidiFile f (back :=: fore)
                   doesFileExist f
       res @?= True
 
