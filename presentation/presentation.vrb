@@ -1,0 +1,18 @@
+\frametitle{Demo: Code}
+\begin{minipage}{0.5\textwidth}
+^^I    aa
+%      \begin{minted}[mathescape,
+%        gobble=2,
+%        linenos,
+%        fontsize=\tiny,
+%        framesep=2mm]{ocaml}
+%      \end{minted}
+    ^^I^^I\end{minipage}
+  ^^I\end{frame}
+
+^^I\begin{frame}{Demo: Music score}
+^^I\vspace{-.5cm}
+^^I\includegraphics[scale=.42,angle=-90]{oriental.pdf}
+^^I\end{frame}
+
+\end{document}
