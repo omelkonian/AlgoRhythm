@@ -64,74 +64,75 @@
 	\todo{k-means, etc...}
 	\end{frame}
 	
-	\begin{frame}{Grammars}
-	\todo{grammar description}\\
+	\begin{frame}[fragile=singleslide]{Grammars: Properties}
+    (Generative) \textit{context-free grammars}, with a few extra features:
+	\begin{itemize}
+	\item \textbf{Temporal}: Rules are parametric to duration
+	\item \textbf{Probabilistic}: Rules can be assigned weights
+	\item \textbf{Graph}: Allow node sharing (using \textit{let}-expressions)
+	\end{itemize}
+	\end{frame}
+	
+	\begin{frame}[fragile=singleslide]{Grammars: Definition}
+	\begin{minted}[baselinestretch=1, fontsize=\small, autogobble]{haskell}
+data Grammar meta a =
+    a |: [Rule meta a]
+data Rule meta a =
+    (a, Weight, Dur -> Bool) :-> (Dur -> Term meta a)
+data Term meta a =
+    a %: Dur
+    | Term meta a :-: Term meta a
+    | Aux Bool meta (Term meta a)
+    | Let (Term meta a) (λb. Term () b -> Term () b)
+
+class Expand meta a b | meta a -> b where
+    expand :: Term meta a -> IO (Term () b)
+
+(a, w) -| f = (a, w, f) :-> (a %:)
+a |->  b = a :-> const b
+a |--> b = (a, 1, always) |-> b
+($:)  = Aux False
+(|$:) = Aux True
+	\end{minted}
 	\end{frame}
 	
 	\begin{frame}[fragile=singleslide]{Grammars: Tabla Rhythm}
 	\begin{minted}[baselinestretch=1, fontsize=\small, autogobble]{haskell}
 tabla :: Grammar () Syllable
 tabla = S |:
-  [ S |--> TE1 :-: XI
+  [ S  |--> TE1 :-: XI
   , XI |--> TA7 :-: XD
   , XD |--> TA8
   , XG |--> TB2 :-: XA
-  ...
+    ...
   , TE4 |--> Ti :-: Rest :-: Dha :-: Ti
-  , TC2 |--> Tr :-: Kt
-  , TB3 |--> Dha :-: Tr :-: Kt
+  , TC2 |--> Tira :-: Kita
+  , TB3 |--> Dha :-: Tira :-: Kita
   , TD1 |--> Rest
-  ...
+    ...
   ]
 instance ToMusicCore Syllable where
     ...
 	\end{minted}
 	\end{frame}
 	
-	\begin{frame}[fragile=singleslide]{Grammars: Jazz Improvisation}
-	\begin{minted}[baselinestretch=0.8, fontsize=\footnotesize, autogobble]{haskell}
-melody :: Grammar () NT
-melody = MQ |:
-  [ -- Abstract Rhythm { MQ ~> Q }
-    (MQ, 1, (== qn))     |-> Q%:qn
-  , (MQ, 25, (> (hn^.)))  :-> \t -> Q%:hn :-: MQ%:(t - hn)
-  ...
-    -- Concrete Rhythm { Q ~> MN }
-  , (Q, 47, (== wn)) |-> MN%:qn :-: Q%:hn :-: MN%:qn
-  , (Q,  6, (== hn)) |-> HT%:(qn^^^) :-: HT%:(qn^^^) :-: HT%:(qn^^^)
-  ...
-  -- Abstract Melody { MN ~> N }
-  , (MN, 1, (== wn)) |-> MN%:qn :-: MN%:qn :-: MN%:qn :-: MN%:qn
-  , (MN,  1, (== qn)) |-> HT%:(en^^^) :-: HT%:(en^^^) :-: AT%:(en^^^)
-    ...
-  -- Concrete Melody { N ~> NT }
-  , (N, 50, (== qn)) |-> ColorTone%:qn
-  , (N, 45, (== qn)) |-> Rest%:qn
-  , (N,  1, (== en)) |-> ApproachTone%:en
-  ...
-  ]
-
-mkSolo :: Music SemiChord -> Music NT -> IO Melody
-    \end{minted}
-	\end{frame}
-
 	\begin{frame}[fragile=singleslide]{Grammars: Tonal Harmony}
 	\begin{minted}[baselinestretch=0.8, fontsize=\footnotesize, autogobble]{haskell}
 harmony :: Grammar Modulation Degree
 harmony = I |:
   [ -- Turn-arounds
-    (I, 8, (> wn)) :->
-      \t -> Let (I%:t/2) (\x -> x :-: x)
-  , (I, 6, (> hn) /\ (<= wn)) :->
-      \t -> II%:t/4 :-: V%:t/4 :-: I%:t/2
-  , (I, 2, (> hn) /\ (<= wn)) :->
-      \t -> V%:t/2 :-: I%:t/2
-  , (I, 2) -|| (<= wn)
+    (I,  8, (> wn)) :-> \t ->
+      Let (I%:t/2) (\x -> x :-: x)
+  , (I,  6, (> hn) /\ (<= wn)) :-> \t ->
+      II%:t/4 :-: V%:t/4 :-: I%:t/2
+  , (I,  2, (> hn) /\ (<= wn)) :-> \t ->
+      V%:t/2 :-: I%:t/2
+  , (I,  2) -| (<= wn)
     -- Modulations
-  , (V, 5, (> hn)) :-> \t -> Modulation P5 $: I%:t
-  , V -| 3
+  , (V,  5, (> hn)) :-> \t -> Modulation P5 $: I%:t
+  , (V,  3) -| always
   , (II, 2, (> hn)) :-> \t -> Modulation M2 |$: I%:t
-  , II -| 8
+  , (II, 8) -| always
   ]
 
 instance Expand Degree Modulation SemiChord where
@@ -139,35 +140,63 @@ instance Expand Degree Modulation SemiChord where
 
 voiceLead :: Music SemiChord -> IO (Music Chord)
 	\end{minted}
+	\end{frame}	
+	
+	\begin{frame}[fragile=singleslide]{Grammars: Jazz Improvisation}
+	\begin{minted}[baselinestretch=0.8, fontsize=\footnotesize, autogobble]{haskell}
+melody :: Grammar () NT
+melody = MQ |:
+  [ -- Abstract Rhythm { MQ ~> Q }
+    (MQ,  1, (== qn)) |-> Q%:qn
+  , (MQ, 25, (> (hn^.))) :-> \t -> Q%:hn :-: MQ%:(t - hn)
+    ...
+    -- Concrete Rhythm { Q ~> MN }
+  , (Q, 47, (== wn)) |-> MN%:qn :-: Q%:hn :-: MN%:qn
+  , (Q,  6, (== hn)) |->
+      MN%:(qn^^^) :-: MN%:(qn^^^) :-: MN%:(qn^^^)
+    ...
+    -- Abstract Melody { MN ~> N }
+  , (MN, 1, (== wn)) |-> N%:qn :-: N%:qn :-: MN%:hn
+  , (MN, 1, (== qn)) |->
+      N%:(en^^^) :-: N%:(en^^^) :-: N%:(en^^^)
+    ...
+    -- Concrete Melody { N ~> NT }
+  , (N, 50, (== qn)) |-> ColorTone%:qn
+  , (N, 45, (== qn)) |-> Rest%:qn
+  , (N,  1, (== en)) |-> ApproachTone%:en
+    ...
+  ]
+
+mkSolo :: Music SemiChord -> Music NT -> IO Melody
+    \end{minted}
 	\end{frame}
 	
 	\begin{frame}[fragile=singleslide]{Demo: Code}
 	\begin{minted}[baselinestretch=0.9, fontsize=\footnotesize, autogobble]{haskell}
     orientalAlgebras = do
-      let ?harmonyConfig = HarmonyConfig
+      let ?config = MusicConfig
         { basePc  = A
         , baseOct = Oct3
         , baseScale = arabian
         , chords  = equally allChords
-        }
-      let ?melodyConfig = defMelodyConfig
-        { scales  = equally allScales
+        , scales  = equally allScales
         , octaves = [(20, Oct4), (15, Oct5), (5, Oct6)]
-        , colorWeight = 0
-        , approachWeight = 10
+        , colorWeight = 0, ...
+        , tempo = 6%5
+        , instruments = [Piano, Sitar, Tabla]
+        , beat = sn
         }
-      let ?midiConfig = MIDIConfig (6%5) [Piano, Sitar, Tabla]
-      let ?tablaBeat = sn
-      
-      (back, fore) <- integrate (12 * wn)
-      rhythm <- runGrammar tabla (12 * wn) ()
-      writeToMidiFile "out.mid" (dyn (back :=: fore :=: rhythm))
+      let t = 12 * wn
+      har <- voiceLead  <$> runGrammar harmony t
+      mel <- mkSolo har <$> runGrammar melody  t
+      rhy <- runGrammar tabla t
+      writeToMidiFile "out.mid" (dyn (har :=: mel :=: rhy))
 	\end{minted}
   	\end{frame}
 	
-	\begin{frame}{Demo: Music score}
-	\vspace{-.5cm}
-	\includegraphics[scale=.42,angle=-90]{oriental.pdf}
+	\begin{frame}[c]{Music score}
+	\centering
+	\includegraphics[scale=.38,angle=-90]{oriental.pdf}
 	\end{frame}
   	
 \end{document}
