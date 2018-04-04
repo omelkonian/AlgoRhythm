@@ -172,9 +172,55 @@ qn = 1%4
 	\todo{genState, selectors, diatonic improv, etc...}
 	\end{frame}
 
-	\begin{frame}{Dynamic Performance}
-	\todo{k-means, etc...}
-	\end{frame}
+        \begin{frame}{Chaos in music}
+                    \begin{itemize}
+                    \item Chaos system: n start values, n update functions. $f_x$ calculates $x_{i+1}$ given $x_{i}$.
+                    \item Chaos: small difference in init values gives very different results.
+                    \end{itemize}
+        \end{frame}
+                  
+               \begin{frame}{Chaos in music: example}
+          \begin{table}[]
+                              \centering
+                        \caption{$f_x = max\ (-1)\ (min\ 1\ (1 - rx^2))$}
+                              \label{my-label}
+                              \begin{tabular}{l | lll} % The second | is not an l (L) but a vertical bar!
+                              \textbf{r} & \textbf{1.9521} & \textbf{1.9621} & \textbf{0.25} \\
+                              \textbf{x} & \textbf{1.2}    & \textbf{1.18}   & \textbf{1.18} \\
+                              \hline
+                              $x_0$      & -1.0            & -1.0            & 0.8937        \\
+                              $x_1$      & -0.9521         & -0.9621         & 0.8002        \\
+                              $x_2$      & -0.7695         & -0.8161         & 0.8398        \\
+                              $x_3$      & -0.1561         & -0.3070         & 0.8236        \\
+                              $x_4$      & 0.9524          & 0.8149          & 0.8304        \\
+                              $x_5$      & -0.7708         & -0.3031         & 0.8276        \\
+                              $x_6$      & -0.1598         & 0.8196          & 0.8287       
+                              \end{tabular}
+                      \end{table}
+        \end{frame}
+        
+        \begin{frame}{Chaos in music: hard to get right}
+                  \includegraphics[width=1\textwidth]{figures/chaos.png}\\
+                  Walker, Elaine. "Chaos melody theory." Music Technology New York University, Master's thesis (2001).
+        \end{frame}
+
+        \begin{frame}{Dynamic Performance: 1 (Cluster notes)}
+                    K-means
+                    \begin{itemize}
+                    \item x: absolute start time of note
+                    \item y: pitch, represented as integer
+                    \item k: total music time / beats per standard bar
+                    \end{itemize}
+        \end{frame}
+        
+        \begin{frame}{Dynamic Performance: 2 (Map to dynamics)}
+                    \begin{enumerate}
+                    \item	Convert x (abs. time) and y (int pitch) to relative values per cluster in range [0,1].
+                    \item Call mapping function on every (x,y) pair
+                    \item Convert mapping function result to dynamics
+                    \item Add dynamics to note that (x,y) belongs to.
+                    \end{enumerate}
+        \end{frame}
 
 	\begin{frame}[fragile=singleslide]{Grammars: Properties}
     (Generative) \textit{context-free grammars}, with a few extra features:
@@ -312,7 +358,7 @@ mkSolo :: Music SemiChord -> Music NT -> IO Melody
 	\centering
 	\vspace{-1.2cm}
 	\begin{center}
-      \makebox[\textwidth]{\includegraphics[width=.73\paperwidth,angle=-90]{oriental.pdf}}
+%      \makebox[\textwidth]{\includegraphics[width=.73\paperwidth,angle=-90]{oriental.pdf}}
     \end{center}
 	\end{frame}
 
