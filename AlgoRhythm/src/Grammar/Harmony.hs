@@ -21,15 +21,15 @@ newtype Modulation = Modulation Interval deriving (Eq, Show)
 harmony :: Grammar Modulation Degree
 harmony = I |:
   [ -- Turn-arounds
-    (I, 8, (> wn)) :-> \t -> Let (I%:t/2) (\x -> x :-: x)
-  , (I, 2, (> wn)) :-> \t -> I%:t/2 :-: I%:t/2
-  , (I, 6, (> hn) /\ (<= wn)) :-> \t -> II%:t/4 :-: V%:t/4 :-: I%:t/2
-  , (I, 2, (> hn) /\ (<= wn)) :-> \t -> V%:t/2 :-: I%:t/2
+    (I, 8, (> wn)) :-> \t -> Let (I:%:t/2) (\x -> x :-: x)
+  , (I, 2, (> wn)) :-> \t -> I:%:t/2 :-: I:%:t/2
+  , (I, 6, (> hn) /\ (<= wn)) :-> \t -> II:%:t/4 :-: V:%:t/4 :-: I:%:t/2
+  , (I, 2, (> hn) /\ (<= wn)) :-> \t -> V:%:t/2 :-: I:%:t/2
   , (I, 2) -|| (<= wn)
     -- TODO ++
 
     -- Modulations
-  , (V, 5, (> hn)) :-> \t -> Modulation P5 $: I%:t
+  , (V, 5, (> hn)) :-> \t -> Modulation P5 $: I:%:t
   , V -| 3
   -- , (II, 2, (> hn)) :-> \t -> Modulation M2 |$: I%:t
   -- , II -| 8
@@ -43,12 +43,12 @@ harmony = I |:
 -- | Expands modulations and intreprets degrees to chords.
 instance Expand HarmonyConfig Degree Modulation SemiChord where
   expand conf (m :-: m') = (:-:) <$> expand conf m <*> expand conf m'
-  expand conf (Let x f)  = f <$> expand conf x
   expand conf (Aux _ (Modulation itv) t) =
     expand (conf {basePc = basePc conf ~~> itv}) t
-  expand conf (Prim (a, t)) = do
+  expand conf (a :%: t) = do
     ch <- conf `interpret` a
-    return $ Prim (ch, t)
+    return $ ch :%: t
+  expand _ _ = error "Expand: let-expressions exist"
 
 -- | Interpret a degree as a 'SemiChord' on a given harmonic context.
 interpret :: HarmonyConfig -> Degree -> IO SemiChord

@@ -28,49 +28,49 @@ data NT = MQ -- Meta-rhythm
 melody :: Grammar () NT
 melody = MQ |:
   [ -- Rhythm { expand MQ(*) to multiple Q(wn), Q(hn) and Q(qn) }
-    (MQ, 1, (== 0))      |-> R%:0
-  , (MQ, 1, (== qn))     |-> Q%:qn
-  , (MQ, 1, (== hn))     |-> Q%:hn
-  , (MQ, 1, (== (hn^.))) |-> Q%:hn :-: Q%:qn
-  , (MQ, 25, (> (hn^.)))  :-> \t -> Q%:hn :-: MQ%:(t - hn)
-  , (MQ, 75, (> wn))      :-> \t -> Q%:wn :-: MQ%:(t - wn)
+    (MQ, 1, (== 0))      |-> R:%:0
+  , (MQ, 1, (== qn))     |-> Q:%:qn
+  , (MQ, 1, (== hn))     |-> Q:%:hn
+  , (MQ, 1, (== (hn^.))) |-> Q:%:hn :-: Q:%:qn
+  , (MQ, 25, (> (hn^.)))  :-> \t -> Q:%:hn :-: MQ:%:(t - hn)
+  , (MQ, 75, (> wn))      :-> \t -> Q:%:wn :-: MQ:%:(t - wn)
 
     -- Melody { expand Qs to notes }
-  , (Q, 52, (== wn)) |-> Q%:hn :-: MN%:qn :-: MN%:qn
-  , (Q, 47, (== wn)) |-> MN%:qn :-: Q%:hn :-: MN%:qn
-  , (Q,  1, (== wn)) |-> MN%:en :-: N%:qn :-: N%:qn :-: N%:qn :-: MN%:en
+  , (Q, 52, (== wn)) |-> Q:%:hn :-: MN:%:qn :-: MN:%:qn
+  , (Q, 47, (== wn)) |-> MN:%:qn :-: Q:%:hn :-: MN:%:qn
+  , (Q,  1, (== wn)) |-> MN:%:en :-: N:%:qn :-: N:%:qn :-: N:%:qn :-: MN:%:en
 
-  , (Q, 60, (== hn)) |-> MN%:qn :-: MN%:qn
-  , (Q, 16, (== hn)) |-> HT%:(qn^.) :-: N%:en
-  , (Q, 12, (== hn)) |-> MN%:en :-: N%:qn :-: MN%:en
-  , (Q,  6, (== hn)) |-> N%:hn
-  , (Q,  6, (== hn)) |-> HT%:(qn^^^) :-: HT%:(qn^^^) :-: HT%:(qn^^^)
+  , (Q, 60, (== hn)) |-> MN:%:qn :-: MN:%:qn
+  , (Q, 16, (== hn)) |-> HT:%:(qn^.) :-: N:%:en
+  , (Q, 12, (== hn)) |-> MN:%:en :-: N:%:qn :-: MN:%:en
+  , (Q,  6, (== hn)) |-> N:%:hn
+  , (Q,  6, (== hn)) |-> HT:%:(qn^^^) :-: HT:%:(qn^^^) :-: HT:%:(qn^^^)
 
-  , (Q, 1, (== qn)) |-> CT%:qn
+  , (Q, 1, (== qn)) |-> CT:%:qn
 
-  , (MN, 1, (== wn)) |-> MN%:qn :-: MN%:qn :-: MN%:qn :-: MN%:qn
+  , (MN, 1, (== wn)) |-> MN:%:qn :-: MN:%:qn :-: MN:%:qn :-: MN:%:qn
 
-  , (MN, 72, (== qn)) |-> MN%:en :-: MN%:en
-  , (MN, 22, (== qn)) |-> N%:qn
-  , (MN,  5, (== qn)) |-> HT%:(en^^^) :-: HT%:(en^^^) :-: HT%:(en^^^)
-  , (MN,  1, (== qn)) |-> HT%:(en^^^) :-: HT%:(en^^^) :-: AT%:(en^^^)
+  , (MN, 72, (== qn)) |-> MN:%:en :-: MN:%:en
+  , (MN, 22, (== qn)) |-> N:%:qn
+  , (MN,  5, (== qn)) |-> HT:%:(en^^^) :-: HT:%:(en^^^) :-: HT:%:(en^^^)
+  , (MN,  1, (== qn)) |-> HT:%:(en^^^) :-: HT:%:(en^^^) :-: AT:%:(en^^^)
 
-  , (MN, 99, (== en)) |-> N%:en
-  , (MN,  1, (== en)) |-> HT%:sn :-: AT%:sn
+  , (MN, 99, (== en)) |-> N:%:en
+  , (MN,  1, (== en)) |-> HT:%:sn :-: AT:%:sn
 
-  , (N, 1, (== hn)) |-> CT%:hn
+  , (N, 1, (== hn)) |-> CT:%:hn
 
-  , (N, 50, (== qn)) |-> CT%:qn
-  , (N, 50, (== qn)) |-> ST%:qn
-  , (N, 45, (== qn)) |-> R%:qn
-  , (N, 20, (== qn)) |-> L%:qn
-  , (N,  1, (== qn)) |-> AT%:qn
+  , (N, 50, (== qn)) |-> CT:%:qn
+  , (N, 50, (== qn)) |-> ST:%:qn
+  , (N, 45, (== qn)) |-> R:%:qn
+  , (N, 20, (== qn)) |-> L:%:qn
+  , (N,  1, (== qn)) |-> AT:%:qn
 
-  , (N, 40, (== en)) |-> CT%:en
-  , (N, 40, (== en)) |-> ST%:en
-  , (N, 20, (== en)) |-> L%:en
-  , (N, 20, (== en)) |-> R%:en
-  , (N,  1, (== en)) |-> AT%:en
+  , (N, 40, (== en)) |-> CT:%:en
+  , (N, 40, (== en)) |-> ST:%:en
+  , (N, 20, (== en)) |-> L:%:en
+  , (N, 20, (== en)) |-> R:%:en
+  , (N,  1, (== en)) |-> AT:%:en
   ]
 
 -- | Produce a concrete improvisation out of a melodic structure.

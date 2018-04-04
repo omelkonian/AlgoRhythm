@@ -22,32 +22,33 @@ data Degree =
 tonalHarmony :: Grammar H.Modulation Degree
 tonalHarmony = Piece |:
   [ -- Phrase level
-    (Piece, 1, always) :-> \t -> foldr1 (:-:) $ replicate (t // (4 * wn)) $ TR%:(4 * wn)
+    (Piece, 1, always) :-> \t ->
+      foldr1 (:-:) $ replicate (t // (4 * wn)) $ TR:%:(4 * wn)
 
     -- Functional level: Expansion
-  , (TR, 1, (> wn)) :-> \t -> TR%:t/2 :-: DR%:t/2
-  , (TR, 1, always) :-> \t -> DR%:t/2 :-: TS%:t/2
-  , (DR, 1, always) :-> \t -> SR%:t/2 :-: DS%:t/2
+  , (TR, 1, (> wn)) :-> \t -> TR:%:t/2 :-: DR:%:t/2
+  , (TR, 1, always) :-> \t -> DR:%:t/2 :-: TS:%:t/2
+  , (DR, 1, always) :-> \t -> SR:%:t/2 :-: DS:%:t/2
   ] ++
-  (([TR, SR, DR], 1, (> wn)) |~> \x t -> x%:t/2 :-: x%:t/2) ++
+  (([TR, SR, DR], 1, (> wn)) |~> \x t -> x:%:t/2 :-: x:%:t/2) ++
   [
-    (TR, 1, always) :-> (TS %:)
-  , (DR, 1, always) :-> (DS %:)
-  , (SR, 1, always) :-> (SS %:)
+    (TR, 1, always) :-> (TS :%:)
+  , (DR, 1, always) :-> (DS :%:)
+  , (SR, 1, always) :-> (SS :%:)
 
     -- Functional level: Modulation
-  , (DS, 1, (>= qn)) :-> \t -> H.Modulation P5 $: DS%:t
-  , (SS, 1, (>= qn)) :-> \t -> H.Modulation P4 $: SS%:t
+  , (DS, 1, (>= qn)) :-> \t -> H.Modulation P5 $: DS:%:t
+  , (SS, 1, (>= qn)) :-> \t -> H.Modulation P4 $: SS:%:t
 
     -- Scale-degree level: Secondary dominants
   ] ++
-  (([TS, DS, SS], 1, (>= hn)) |~> \x t -> (H.Modulation P5 $: x%:t/2) :-: x%:t/2) ++
+  (([TS, DS, SS], 1, (>= hn)) |~> \x t -> (H.Modulation P5 $: x:%:t/2) :-: x:%:t/2) ++
   [ -- Scale-degree level: Functional-Scale interface
-    (TS, 1, (>= wn)) :-> \t -> I%:t/2 :-: IV%:t/4 :-: I%:t/4
-  , (TS, 1, always) :-> (I %:)
-  , (SS, 1, always) :-> (IV %:)
-  , (DS, 1, always) :-> (V %:)
-  , (DS, 1, always) :-> (VI %:)
+    (TS, 1, (>= wn)) :-> \t -> I:%:t/2 :-: IV:%:t/4 :-: I:%:t/4
+  , (TS, 1, always) :-> (I :%:)
+  , (SS, 1, always) :-> (IV :%:)
+  , (DS, 1, always) :-> (V :%:)
+  , (DS, 1, always) :-> (VI :%:)
   ]
 
 -- | Expands modulations and intreprets degrees to chords.

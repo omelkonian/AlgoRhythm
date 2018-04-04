@@ -43,12 +43,13 @@ instance ToMusicCore TablaNote where
                     _    -> error "Incomplete grammar rewrite"
 
 (|-->) :: (?tablaBeat :: Duration) => a -> [a] -> Rule meta a
-x |--> xs = (x, 1, always) |-> foldl1 (:-:) (map (%: ?tablaBeat) xs)
+x |--> xs = (x, 1, always) |-> foldl1 (:-:) (map (:%: ?tablaBeat) xs)
 
 -- | Grammar for tabla improvisation.
 tabla :: (?tablaBeat :: Duration) => Grammar () TablaNote
 tabla = Start |:
-  [ (Start, 1, always) :-> \t -> foldr1 (:-:) $ replicate (t // (16 * ?tablaBeat)) $ S%:def
+  [ (Start, 1, always) :-> \t ->
+      foldr1 (:-:) $ replicate (t // (16 * ?tablaBeat)) $ S:%:def
   , S |--> [TE1, XI]
   , XI |--> [TA7, XD]
   , XD |--> [TA8]

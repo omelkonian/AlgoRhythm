@@ -15,8 +15,6 @@
 % Code listing
 \usepackage{minted}
 \usemintedstyle{monokai}
-%\usemintedstyle{native}
-%\usemintedstyle{tango}
 \newcommand{\icode}[1]{\mintinline{haskell}{#1}}
 
 % Graphics
@@ -26,16 +24,8 @@
 
 \newcommand\todo[1]{\textcolor{red}{#1}}
 
-% Box macro
-\newcommand{\ex}[2]{
-  \vfill
-  \begin{alertblock}{#1}
-    #2
-  \end{alertblock}
-}
 %----------------------------------------------------------------------------
 
-% Beamer
 \title{AlgoRhythm}
 \subtitle{A Library for Algorithmic Music Composition}
 \author{Joris ten Tusscher, Cas van der Rest, Orestis Melkonian}
@@ -80,13 +70,10 @@ data Grammar meta a =
 data Rule meta a =
     (a, Weight, Dur -> Bool) :-> (Dur -> Term meta a)
 data Term meta a =
-    a %: Dur
+    a :%: Dur
     | Term meta a :-: Term meta a
     | Aux Bool meta (Term meta a)
-    | Let (Term meta a) (λb. Term () b -> Term () b)
-
-class Expand meta a b | meta a -> b where
-    expand :: Term meta a -> IO (Term () b)
+    | Let (Term meta a) (Term meta a -> Term meta a)
 
 (a, w) -| f = (a, w, f) :-> (a %:)
 a |->  b = a :-> const b
@@ -95,6 +82,44 @@ a |--> b = (a, 1, always) |-> b
 (|$:) = Aux True
 	\end{minted}
 	\end{frame}
+	
+	\begin{frame}[fragile=singleslide]{Grammars: Generation}
+
+    	\begin{minted}[baselinestretch=1, fontsize=\footnotesize, autogobble]{haskell}
+gen :: (Eq a, Eq meta, Expand input meta a b)
+    => Grammar meta a -> input -> Dur -> Music b
+gen gr i t = rewrite gr t >>> unlet >>> expand i >>> toMusic
+	\end{minted}
+
+
+	\begin{enumerate}	
+	
+	\item \textbf{Given an initial duration, rewrite until fixpoint}
+	\begin{minted}[baselinestretch=1, fontsize=\footnotesize, autogobble]{haskell}
+rewrite :: (Eq a, Eq meta)
+        => Grammar meta a -> Dur -> Term meta a
+	\end{minted}
+	
+	\item \textbf{Unfold \textit{let}-expressions}
+	\begin{minted}[baselinestretch=1, fontsize=\footnotesize, autogobble]{haskell}
+unlet (Let x f) = f x
+unlet x         = x
+	\end{minted}
+	
+	\item \textbf{Expand auxiliary wrappers}
+	\begin{minted}[baselinestretch=1, fontsize=\footnotesize, autogobble]{haskell}
+class Expand input meta a b | input meta a -> b where
+    expand :: input -> Term meta a -> Term () b
+	\end{minted}
+	
+	\item \textbf{Convert to music}
+	\begin{minted}[baselinestretch=1, fontsize=\footnotesize, autogobble]{haskell}
+(:%:) ~> (<|)
+(:-:) ~> (:+:)
+	\end{minted}
+		
+	\end{enumerate}
+	\end{frame}	
 	
 	\begin{frame}[fragile=singleslide]{Grammars: Tabla Rhythm}
 	\begin{minted}[baselinestretch=1, fontsize=\small, autogobble]{haskell}
@@ -124,18 +149,18 @@ harmony = I |:
     (I,  8, (> wn)) :-> \t ->
       Let (I%:t/2) (\x -> x :-: x)
   , (I,  6, (> hn) /\ (<= wn)) :-> \t ->
-      II%:t/4 :-: V%:t/4 :-: I%:t/2
+      II:%:t/4 :-: V:%:t/4 :-: I:%:t/2
   , (I,  2, (> hn) /\ (<= wn)) :-> \t ->
-      V%:t/2 :-: I%:t/2
+      V:%:t/2 :-: I:%:t/2
   , (I,  2) -| (<= wn)
     -- Modulations
-  , (V,  5, (> hn)) :-> \t -> Modulation P5 $: I%:t
+  , (V,  5, (> hn)) :-> \t -> Modulation P5 $: I:%:t
   , (V,  3) -| always
-  , (II, 2, (> hn)) :-> \t -> Modulation M2 |$: I%:t
+  , (II, 2, (> hn)) :-> \t -> Modulation M2 |$: I:%:t
   , (II, 8) -| always
   ]
 
-instance Expand Degree Modulation SemiChord where
+instance Expand Config Degree Modulation SemiChord where
     ...
 
 voiceLead :: Music SemiChord -> IO (Music Chord)
@@ -147,23 +172,23 @@ voiceLead :: Music SemiChord -> IO (Music Chord)
 melody :: Grammar () NT
 melody = MQ |:
   [ -- Abstract Rhythm { MQ ~> Q }
-    (MQ,  1, (== qn)) |-> Q%:qn
-  , (MQ, 25, (> (hn^.))) :-> \t -> Q%:hn :-: MQ%:(t - hn)
+    (MQ,  1, (== qn)) |-> Q:%:qn
+  , (MQ, 25, (> (hn^.))) :-> \t -> Q:%:hn :-: MQ:%:(t - hn)
     ...
     -- Concrete Rhythm { Q ~> MN }
-  , (Q, 47, (== wn)) |-> MN%:qn :-: Q%:hn :-: MN%:qn
+  , (Q, 47, (== wn)) |-> MN:%:qn :-: Q:%:hn :-: MN:%:qn
   , (Q,  6, (== hn)) |->
-      MN%:(qn^^^) :-: MN%:(qn^^^) :-: MN%:(qn^^^)
+      MN:%:(qn^^^) :-: MN:%:(qn^^^) :-: MN:%:(qn^^^)
     ...
     -- Abstract Melody { MN ~> N }
-  , (MN, 1, (== wn)) |-> N%:qn :-: N%:qn :-: MN%:hn
+  , (MN, 1, (== wn)) |-> N:%:qn :-: N:%:qn :-: MN:%:hn
   , (MN, 1, (== qn)) |->
-      N%:(en^^^) :-: N%:(en^^^) :-: N%:(en^^^)
+      N:%:(en^^^) :-: N:%:(en^^^) :-: N:%:(en^^^)
     ...
     -- Concrete Melody { N ~> NT }
-  , (N, 50, (== qn)) |-> ColorTone%:qn
-  , (N, 45, (== qn)) |-> Rest%:qn
-  , (N,  1, (== en)) |-> ApproachTone%:en
+  , (N, 50, (== qn)) |-> ChordTone:%:qn
+  , (N, 45, (== qn)) |-> Rest:%:qn
+  , (N,  1, (== en)) |-> ApproachTone:%:en
     ...
   ]
 
@@ -175,14 +200,14 @@ mkSolo :: Music SemiChord -> Music NT -> IO Melody
 	\begin{minted}[baselinestretch=0.9, fontsize=\footnotesize, autogobble]{haskell}
     orientalAlgebras = do
       let ?config = MusicConfig
-        { basePc  = A
-        , baseOct = Oct3
-        , baseScale = arabian
-        , chords  = equally allChords
-        , scales  = equally allScales
-        , octaves = [(20, Oct4), (15, Oct5), (5, Oct6)]
-        , colorWeight = 0, ...
-        , tempo = 6%5
+        { basePc      = A
+        , baseOct     = Oct3
+        , baseScale   = arabian
+        , chords      = equally allChords
+        , scales      = equally allScales
+        , octaves     = [(20, Oct4), (15, Oct5), (5, Oct6)]
+        , restWeight  = 0, ...
+        , tempo       = 6%5
         , instruments = [Piano, Sitar, Tabla]
         , beat = sn
         }
@@ -193,8 +218,8 @@ mkSolo :: Music SemiChord -> Music NT -> IO Melody
       writeToMidiFile "out.mid" (dyn (har :=: mel :=: rhy))
 	\end{minted}
   	\end{frame}
-	
-	\begin{frame}[c]{Music score}
+
+	\begin{frame}[c]{Demo: Music score}
 	\centering
 	\vspace{-1.2cm}
 	\begin{center}
@@ -203,3 +228,4 @@ mkSolo :: Music SemiChord -> Music NT -> IO Melody
 	\end{frame}
   	
 \end{document}
+ 
