@@ -1,4 +1,3 @@
-{-# language BangPatterns #-}
 {-# language GADTs #-}
 
 module Generate.Applications.ChaosPitches where
@@ -6,12 +5,8 @@ module Generate.Applications.ChaosPitches where
 import Music
 import Utils.Vec
 import Generate.Generate
-import Export
-import Control.Monad (void)
 import Control.Monad.State hiding (state)
-import System.IO.Unsafe
 import Generate.Chaos
-import System.Random (getStdRandom, randomR)
 
 -- Generates pitches using a Chaos function.
 
@@ -33,14 +28,12 @@ bSolo = do
   run1 <- local $ do
     addConstraint octave   (`elem` [4,5])
     addConstraint duration (`elem` [1%32, 1%16])
-    notes <- replicateM 12 genNote
-    return $ line notes
+    replicateM 12 genNote >>= return . line
   run2 <- local $ do
     addConstraint octave     (`elem` [2,3,4])
     addConstraint duration   (`elem` [1%8, 1%16])
     addConstraint pitchClass (`elem` [E, Fs, Gs, B, Cs])
-    notes <- replicateM 6 genNote
-    return $ line notes
+    replicateM 12 genNote >>= return . line
   return $ run1 :=: run2
 
 
@@ -52,6 +45,6 @@ chaos1Selector s as = do
   ([d], s') <- runStateT genNextIteration s
   let dNormalised = (d+1) / 2
   let maxI = fromIntegral (length as - 1)
-  let i = round (dNormalised * maxI)
-  let a = as !! i
+  let index = round (dNormalised * maxI)
+  let a = as !! index
   return (snd a, s')

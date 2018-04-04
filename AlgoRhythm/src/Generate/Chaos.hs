@@ -6,9 +6,7 @@ import Music
 import Utils.Vec
 import Generate.Generate
 import Export
-import Control.Monad (void)
 import Control.Monad.State hiding (state)
-import System.IO.Unsafe
 
 data Mapping n = Mapping { pcSel  :: Selector (ChaosState n) PitchClass
                          , octSel :: Selector (ChaosState n) Octave
@@ -27,15 +25,10 @@ defaultMapping = Mapping  { pcSel  = defaultChaosSelector
                           , artSel = defaultChaosSelector
                           }
 
--- | Default Chaos selector, basically equivalnt to a speudorandom generation.
---   Could also crash if a Chaos function is not well designed and converges
---   to a stable point of 0.
+-- | Default Chaos selector, (just grabs the first element from the list).
 defaultChaosSelector :: Selector (ChaosState n) a
 defaultChaosSelector s as = do
-  (ds, s') <- runStateT genNextIteration s
-  -- let d = head ds
-  -- let a = as !! (round (d * 10e100) `mod` length as)
-  -- let !_ = unsafePerformIO $ print $ show ds
+  (_, s') <- runStateT genNextIteration s
   return (snd (head as), s')
 
 chaosEntry :: (Enum a, Bounded a) => ChaosState n -> Selector (ChaosState n) a -> Entry (ChaosState n) a

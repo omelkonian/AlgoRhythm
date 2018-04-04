@@ -82,8 +82,8 @@ addDynamicsToCluster f c  = do
           else do
             let maxDynNum = fromIntegral (fromEnum (maxBound :: Dynamic)) :: Double
             let dynNum    = round (maxDynNum * dynDouble)
-            let dyn       = Dynamic (toEnum dynNum :: Dynamic)
-            ((p',dyn:attrs),(t,p))
+            let d       = Dynamic (toEnum dynNum :: Dynamic)
+            ((p',d:attrs),(t,p))
   map pToDyn c
 
 -- | Clusters a MusicCluster. The number of clusters is equal to half
