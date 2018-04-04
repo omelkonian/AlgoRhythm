@@ -84,10 +84,30 @@ Since our datatype is polymorphic, we can freely change abstraction levels of mu
 Futhermore, we define common constants (e.g. scales, chords), useful types of music (e.g. \icode{Melody = Music Pitch}, \icode{Rhythm = Music ()}, \icode{Harmony = Music Chord}), as well as operations often used in algorithmic music composition, such as transposition, inversion, mirroring, scaling and repetition. These are implemented as typeclasses, since multiple music types could be manipulated in the same way (e.g. we could transpose both a \icode{Pitch} and a \icode{Scale}).
 
 \subsection{Export functionality}
-\todo{lilypond, MIDI, etc...}
+Export functionality is provided for both \texttt{.midi} files and \texttt{.ly} files, which can be converted to PDF using \href{https://lilypond.org}{Lilypond}.
+
+\subsubsection{Musical Score}
+Any value of type \icode{Music} can be converted to a Lilypond file representing a musical score using \icode{writeToLilypondFile "music.ly" m} functions, provided that \icode{m} is a member of the \icode{ToMusicCore} type class, meaning that it can be converted to the \icode{MusicCore} type. Assuming that the user has Lilypond installed on their system, the generated file can be converted into a PDF using \icode{lilypond music.ly}. An example of a generated score can be found in figure ?.
+\subsubsection{MIDI files}
+\todo{MIDI export}
 
 \subsection{Generation}
 \todo{monadic interface, selectors, etc...}
+A simple, constraint based, monadic interface is included in order to allow a user to program their own music generators. This interface is defined as a combined \icode{State} and \icode{IO} monad: \icode{type GenericMusicGenerator st s a = StateT (st s) IO a}. We provide an instance of this interface to generate for the types used in the representation DSL, defined as \icode{type MusicGenerator s a = GenericMusicGenerator GenState s a}.
+
+\subsubsection{Default generation state}
+The \icode{GenState} datatype consists of several values of the type \icode{Entry s a}, where \icode{a} is the type of the value that is contained within the \icode{Entry}, and \icode{s} is the state that is kept when selecting entries from the \icode{GenState}. Each \icode{Entry} consists of three elements: \icode{values :: [(Weight, a)]}, \icode{constraints :: [a -> Bool]} and \icode{selector :: Selector s}. The \icode{values} can be used to generate certain values with a higher probability, \icode{constraints} allow the exclusion of certain values, and \icode{selector} describes how to select a value from this entry, where the \icode{Selector} type is defined as follows: \icode{type Selector s a = s -> [(Weight, a)] -> IO (a, s)}. Selection based upon previously generated values is thus possible, since \icode{Selector} is essentially a state monad.
+
+\subsubsection{Composing generators}
+An auxiliary data type \icode{Accessor} is defined, that describes how to get and set values in the generator state:
+\begin{minted}[baselinestretch=1.1, fontsize=\small]{haskell}
+data Accessor st s a = Accessor
+  { getValue :: st s -> Entry s a
+  , setValue :: Entry s a -> st s -> st s
+  }
+\end{minted}
+
+The library functions for adding constraints and selectors are parameterized with an accessor, so that the right \icode{Entry} is manipulated.
 
 \subsection{Grammars}
 To accommodate a linguistic approach to music generation, we provide a DSL for defining generative grammars. These are similar to context-free grammars, with the addition of being probabilistic (i.e. allow assigning weights to individual rules), temporal (i.e. rules are parametric to duration) and node-sharing (i.e. allow repetition of generated symbols using \textit{let}-expressions).
@@ -132,7 +152,49 @@ hypnotic = 2%5 *~ cascades :+: (cascades ><)
         rep f g n m = m :=: g (rep f g (n - 1) (f m))
 \end{minted}
 
-\todo{genDSL+chaos example}
+\subsection{Generation DSL}
+The monadic interface allows for relatively easy manipulation of the generation process. There are a few ways in which a user may influence the way in which the music is generated. They include adding constraints, choosing selectors and setting the frequency/probability for individual elements.
+
+\begin{minted}[baselinestretch=1.1, fontsize=\small]{haskell}
+-- Add a new constraint (only quarter notes or faster)
+addConstraint duration (<=(1%4))
+
+-- Provide a custom selector
+putSelector pitchClass mySelector
+
+-- Provide a custom distribution for elements (favor higher octaves)
+putOptions dynamics
+  [ (0.01, PPPPP)
+  , (0.05, PPPP)
+  ...
+  , (0.3, FFFF)
+  ]
+\end{minted}
+
+An aggregate example where the interface is used to generate a melody in the C major scale over a G7 chord with a length of 4 whole notes is shown below:
+
+\begin{minted}[baselinestretch=1.1, fontsize=\small]{haskell}
+melodyInC :: MusicGenerator () MusicCore
+melodyInC = do
+  addConstraint pitchClass (inScale C major)
+  options <- getOptions pitchClass
+  rhythm  <- boundedRhythm (4 * wn) Medium
+  -- Chord tones are 4 times as likely to be picked
+  let options' = map
+        (\(w, v) ->
+          if v `elem` (instantiate G d7 :: [PitchClass])
+            then (4 * w, v) else (w, v)) options
+  -- set options and generate pitches
+  putOptions pitchClass options'
+  pitches <- replicateM (length rhythm) (pitchClass??)
+  -- put everything together into a piece of music
+  let fullPitches = (flip (<:) $ []) <$> (zipWith (#) pitches (repeat 4))
+  let gmaj7 = (toMusicCore . chord .
+        map (Note (4 * wn) . (flip (#)) 3)) (G =| d7)
+  return $ gmaj7 :=: line (zipWith (<|) fullPitches rhythm)
+\end{minted}
+
+The monadic interface allows for easy implementation of simple heuristics, as demonstrated above. A more involved example of this can be found in the \icode{Generate.Applications.Diatonic} module, which generates melodies based on the idea that smaller intervals (steps and skips) between consecutive notes are more common than larger intervals (leaps).
 
 \subsection{Grammars}
 To showcase the generative power of our grammars, we implement grammars all basic elements of music, namely harmony, melody and rhythm. To save space, we only explain the intuition behind each grammar and refer the reader to the actual implementations.
@@ -156,7 +218,9 @@ Last but not least, we implement a grammar for improvising rhythmic sequences fo
 
 \section{Reflection}
 \todo{more type trickery}\\
-\todo{GenDSL abstraction}\\
+Although the monadic interface works reasonably well for implementing simple heuristics, actually generating more complex pieces of music turned out to be quite hard. We think that this flaw is fundamental to our approach, as the \icode{GenericMusic} type is very \emph{flat}, in the sense that it is only aware of the most fundamental aspects of music, such as notes and durations. Since musical compositions often exhibit structure on many levels, generated music that only concerns about the smallest building blocks will not be very convincing.
+
+As it turned out, the selected monadic approach does not scale well in order to incorporate these larger structures into it's output, which makes it a bit of a dead end for more complex purposes.
 
 Regarding grammars, one problem we were not able to overcome, was implementing a grammar for jazz chord progressions, as proposed by Steedman\cite{jazzchords}, since it required context-sensitive features and that would make our grammar implementation overly complicated and necessarily slower.\\
 
