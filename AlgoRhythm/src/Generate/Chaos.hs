@@ -33,10 +33,10 @@ defaultMapping = Mapping  { pcSel  = defaultChaosSelector
 defaultChaosSelector :: Selector (ChaosState n) a
 defaultChaosSelector s as = do
   (ds, s') <- runStateT genNextIteration s
-  let d = head ds
-  let a = as !! (round (d * 10e100) `mod` length as)
-  let !_ = unsafePerformIO $ print $ show ds
-  return (snd a, s')
+  -- let d = head ds
+  -- let a = as !! (round (d * 10e100) `mod` length as)
+  -- let !_ = unsafePerformIO $ print $ show ds
+  return (snd (head as), s')
 
 chaosEntry :: (Enum a, Bounded a) => ChaosState n -> Selector (ChaosState n) a -> Entry (ChaosState n) a
 chaosEntry _ sel = Entry { values      = zip (repeat 1) [minBound ..]
@@ -72,7 +72,7 @@ playGen :: ToMusicCore a => ChaosState n -> Mapping n -> MusicGenerator (ChaosSt
 playGen s m gen = do
   music <- runGenerator s m gen
   let ?midiConfig = defaultMIDIConfig
-  playDev 4 music
+  playDev 0 music
 
 -- | Builds a ChaosState from two Vectors of the same length. This constraint
 --   is imposed since the number of variables should be equal to the number
@@ -82,20 +82,10 @@ buildChaos :: Vec n Double                   -- ^ Initial variable values
            -> ChaosState n
 buildChaos vs fs = ChaosState { variables = vs , updateFunctions = fs }
 
-main' :: IO ()
-main' = void (runStateT genNextIteration chaos1)
-
 data ChaosState n =
   ChaosState { variables       :: Vec n Double
              , updateFunctions :: Vec n (Vec n Double -> Double)
              }
-
-chaos1 :: ChaosState D2
-chaos1 = buildChaos (0.2 :. 0.2 :. Nil) (f1 :. f2 :. Nil)
-  where f1 :: (Vec D2 Double -> Double)
-        f1 vs@(x:._:.Nil) = f2 vs - 0.5 * x ** 2
-        f2 :: (Vec D2 Double -> Double)
-        f2    (x:._:.Nil) = 0.5 * x
 
 type ChaosGenerator n = StateT (ChaosState n) IO
 

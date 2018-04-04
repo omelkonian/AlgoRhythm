@@ -24,6 +24,7 @@ library
         Generate.QuickCheck,
         Generate.Applications.Diatonic,
         Generate.Applications.GenConfig,
+        Generate.Applications.ChaosPitches,
         -- Grammars
         Grammar,
         Grammar.Types,
