@@ -240,11 +240,13 @@ harmony = I |:
   , (I,  2, (> hn) /\ (<= wn)) :-> \t ->
       V%:t/2 :-: I%:t/2
   , (I,  2) -| (<= wn)
+    ...
     -- Modulations
   , (V,  5, (> hn)) :-> \t -> Modulation P5 $: I%:t
   , (V,  3) -| always
   , (II, 2, (> hn)) :-> \t -> Modulation M2 |$: I%:t
   , (II, 8) -| always
+    ...
   ]
 
 instance Expand Degree Modulation SemiChord where
