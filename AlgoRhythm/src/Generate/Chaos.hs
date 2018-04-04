@@ -1,4 +1,5 @@
-{-# LANGUAGE GADTs, BangPatterns, ImplicitParams #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE ImplicitParams #-}
 
 module Generate.Chaos where
 
@@ -28,8 +29,7 @@ defaultMapping = Mapping  { pcSel  = defaultChaosSelector
 -- | Default Chaos selector, (just grabs the first element from the list).
 defaultChaosSelector :: Selector (ChaosState n) a
 defaultChaosSelector s as = do
-  (_, s') <- runStateT genNextIteration s
-  return (snd (head as), s')
+  return (snd (head as), s)
 
 chaosEntry :: (Enum a, Bounded a) => ChaosState n -> Selector (ChaosState n) a -> Entry (ChaosState n) a
 chaosEntry _ sel = Entry { values      = zip (repeat 1) [minBound ..]
@@ -52,18 +52,15 @@ chaosState st m = GenState { state = st
                          }
 
 -- | Runs a generator on the chaos state.
-runGenerator :: ChaosState n -> Mapping n -> MusicGenerator (ChaosState n) a -> IO a
-runGenerator s m g = runGenerator' (chaosState s m) g
+runChaosGenerator :: ChaosState n -> Mapping n -> MusicGenerator (ChaosState n) a -> IO a
+runChaosGenerator s m g = runGenerator' (chaosState s m) g
 
--- runGenerator :: s -> MusicGenerator s a -> IO a
--- runGenerator = runGenerator' . quickCheckState
+cleanChaos :: ChaosState n -> Mapping n -> MusicGenerator (ChaosState n) a -> MusicGenerator (ChaosState n) a
+cleanChaos s m = modified (const $ chaosState s m)
 
-clean :: ChaosState n -> Mapping n -> MusicGenerator (ChaosState n) a -> MusicGenerator (ChaosState n) a
-clean s m = modified (const $ chaosState s m)
-
-playGen :: ToMusicCore a => ChaosState n -> Mapping n -> MusicGenerator (ChaosState n) (Music a) -> IO ()
-playGen s m gen = do
-  music <- runGenerator s m gen
+playChaosGen :: ToMusicCore a => ChaosState n -> Mapping n -> MusicGenerator (ChaosState n) (Music a) -> IO ()
+playChaosGen s m gen = do
+  music <- runChaosGenerator s m gen
   let ?midiConfig = defaultMIDIConfig
   playDev 0 music
 
@@ -73,7 +70,7 @@ playGen s m gen = do
 buildChaos :: Vec n Double                   -- ^ Initial variable values
            -> Vec n (Vec n Double -> Double) -- ^ Functions that calculate next variable values
            -> ChaosState n
-buildChaos vs fs = ChaosState { variables = vs , updateFunctions = fs }
+buildChaos vs fs = ChaosState { variables=vs , updateFunctions=fs}
 
 data ChaosState n =
   ChaosState { variables       :: Vec n Double
@@ -88,5 +85,4 @@ genNextIteration = do
     let vs = variables s
     let fs = updateFunctions s
     let newVs = fmap (\f -> f vs) fs
-    put (s { variables = newVs })
     return $ list newVs

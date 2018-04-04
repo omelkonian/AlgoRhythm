@@ -1,5 +1,6 @@
 {-# language GADTs #-}
 
+-- | Generates pitches using a Chaos function.
 module Generate.Applications.ChaosPitches where
 
 import Music
@@ -8,12 +9,10 @@ import Generate.Generate
 import Control.Monad.State hiding (state)
 import Generate.Chaos
 
--- Generates pitches using a Chaos function.
-
-genChaosMusic :: IO ()
-genChaosMusic = do -- void (runStateT genNextIteration chaos1)
+genChaosMusic :: IO (Music Pitch)
+genChaosMusic = do
   let mapping = defaultMapping {pcSel=chaos1Selector, octSel=chaos1Selector }
-  playGen chaos1 mapping bSolo
+  runChaosGenerator chaos1 mapping bSolo
 
 chaos1 :: ChaosState D1
 chaos1 = do
@@ -33,13 +32,9 @@ bSolo = do
     addConstraint octave     (`elem` [2,3,4])
     addConstraint duration   (`elem` [1%8, 1%16])
     addConstraint pitchClass (`elem` [E, Fs, Gs, B, Cs])
-    replicateM 12 genNote >>= return . line
+    replicateM 7 genNote >>= return . line
   return $ run1 :=: run2
 
-
--- | Default Chaos selector, basically equivalnt to a speudorandom generation.
---   Could also crash if a Chaos function is not well designed and converges
---   to a stable point of 0.
 chaos1Selector :: Selector (ChaosState n) a
 chaos1Selector s as = do
   ([d], s') <- runStateT genNextIteration s

@@ -1,12 +1,13 @@
 import Test.Framework                 (defaultMain, testGroup)
 import Test.Framework.Providers.HUnit
 
-import TGrammar (grammarTests)
-import TMidi    (midiTests)
-import TMusic   (musicTests)
-import TScore   (scoreTests)
-import TVec     (vecTests)
+import TGrammar  (grammarTests)
+import TMidi     (midiTests)
+import TMusic    (musicTests)
+import TScore    (scoreTests)
+import TVec      (vecTests)
 import TGenerate (genTests)
+import TChaos    (chaosTests)
 
 main = defaultMain [ musicTests
                    , scoreTests
@@ -14,4 +15,5 @@ main = defaultMain [ musicTests
                    , vecTests
                    , grammarTests
                    , genTests
+                   , chaosTests
                    ]

@@ -39,7 +39,7 @@ sinPitchDynamics x _ = 0.25 + (0.25 * sin (2 * pi * x))
 -- | Returns a dynamic between 0% and 100% volume, based on the exponential
 --   quantile function and the relative pitch height of the note in the cluster.
 expPitchDynamics :: DynamicsMap
-expPitchDynamics _ y = max 0.25 (min 0.8 (-log (1 - y)))
+expPitchDynamics _ y = max 0.45 (min 0.8 (-log (1 - y)))
 
 dyn :: (ToMusicCore a) => Music a -> MusicCore
 dyn m = addDynamics m expPitchDynamics
@@ -93,9 +93,7 @@ cluster m = kmeansGen gen k (notes m)
         gen (_,(x,y)) = [fromRational x, fromIntegral y]
         -- The number of clusters is equal to the duration of the music divided
         -- by 4 (we assume that 4 beats go into a measure.)
-        k = round ((fromRational (duration m) :: Double) / 4)
-        -- TODO (if current solution isn't good enough) Better k measure. This one makes no sense whatsoever.
-        --k = ceiling $ (fromIntegral (length m')) / (fromRational (maxTime m'))
+        k = max 1 (round ((fromRational (duration m) :: Double) / 4))
 
 -- | Assings 2d coordinates to all music Notes (not Rests), where the x is the
 --   absolute start time of the Note and the y is the Pitch of the Note

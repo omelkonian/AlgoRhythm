@@ -33,6 +33,15 @@ main = do
 
   playDev 4 $ 2 ## dyn (toMusicCore background :=: toMusicCore foreground)
 
+-- | Chaos blues. Generates a short music composition using the Chaos function
+--   represented in Figure 1 of Chaos Melody Theory by Elaine Walker
+--   (http://www.ziaspace.com/elaine/chaos/ChaosMelodyTheory.pdf)
+chaosBlues :: Bool -> IO ()
+chaosBlues addDyn = do
+  m <- Gen.genChaosMusic
+  let ?midiConfig = defaultMIDIConfig
+  playDev 0 (if addDyn then dyn m else (toMusicCore m))
+
 --
 jazz :: IO ()
 jazz = do
