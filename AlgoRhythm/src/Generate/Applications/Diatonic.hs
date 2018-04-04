@@ -12,7 +12,6 @@ module Generate.Applications.Diatonic where
   import qualified Control.Arrow as Arrow
   import Control.Monad
   import Control.Monad.State
-  import Debug.Trace
   import Grammar.Utilities
   import Test.QuickCheck
   import Test.QuickCheck.Gen
@@ -179,7 +178,7 @@ module Generate.Applications.Diatonic where
                               -> Double
                               -> [(Weight, a)]
                               -> MusicGenerator () [a]
-  genAspect accessor initial n k options = trace (show n) $ do
+  genAspect accessor initial n k options = do
     lift $ runGenerator initial $
       do accessor >+ options
          accessor >? (beamSelector k accessor)

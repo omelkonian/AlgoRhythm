@@ -49,13 +49,13 @@ simpleMelody :: IO ()
 simpleMelody = do
   m <- Gen.runGenerator () $ replicateM 4 Gen.melodyInC
   let ?midiConfig = MIDIConfig (4%4) [AcousticGrandPiano]
-  writeToMidiFile "out.midi" (line m)
+  writeToMidiFile "simpleMelody.midi" (line m)
 
 randomMelody :: IO ()
 randomMelody = do
   m <- Gen.runGenerator () Gen.randomMelody
   let ?midiConfig = MIDIConfig (4%4) [AcousticGrandPiano]
-  writeToMidiFile "out.midi" m
+  writeToMidiFile "random.midi" m
 
 
 --
@@ -83,7 +83,7 @@ jazz = do
         }
   foreground <- Gen.runGenerator () (Gen.diatonicMelody melodyConfig)
 
-  writeToMidiFile "out.midi" (foreground :=: toMusicCore background)
+  writeToMidiFile "jazz.midi" (foreground :=: toMusicCore background)
 
 -- A piece with fast banjo playing
 fastBanjo :: IO ()
