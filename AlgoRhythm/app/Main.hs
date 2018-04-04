@@ -5,7 +5,6 @@ module Main where
 
 import Dynamics
 import Export
-import Generate hiding (dyn)
 import Grammar
 import Music
 import qualified Generate as Gen
@@ -18,6 +17,8 @@ main = do
         , baseScale = japanese
         , chords  = equally allChords
         }
+  let ?midiConfig = defaultMIDIConfig
+  let t = 4 * wn
   harmonicStructure <- runGrammar uuHarmony t ?harmonyConfig
   background <- voiceLead harmonicStructure
 

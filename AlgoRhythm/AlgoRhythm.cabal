@@ -23,6 +23,7 @@ library
         Generate.Chaos,
         Generate.QuickCheck,
         Generate.Applications.Diatonic,
+        Generate.Applications.GenConfig,
         -- Grammars
         Grammar,
         Grammar.Types,
