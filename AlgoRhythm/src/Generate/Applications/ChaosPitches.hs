@@ -19,7 +19,7 @@ chaos1 = do
   let startX = 1.2
   buildChaos (startX :. Nil) (f :. Nil)
   where f :: (Vec D1 Double -> Double)
-        f (x:.Nil) = max (-1) (min 1 (1 - 1.99 * x**2))
+        f (x:.Nil) = max (-1) (min 1 (1 - 1.9521 * x**2))
 
 bSolo :: MusicGenerator (ChaosState D1) Melody
 bSolo = do
