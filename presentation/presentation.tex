@@ -15,6 +15,8 @@
 % Code listing
 \usepackage{minted}
 \usemintedstyle{monokai}
+%\usemintedstyle{native}
+%\usemintedstyle{tango}
 \newcommand{\icode}[1]{\mintinline{haskell}{#1}}
 
 % Graphics
@@ -24,8 +26,16 @@
 
 \newcommand\todo[1]{\textcolor{red}{#1}}
 
+% Box macro
+\newcommand{\ex}[2]{
+  \vfill
+  \begin{alertblock}{#1}
+    #2
+  \end{alertblock}
+}
 %----------------------------------------------------------------------------
 
+% Beamer
 \title{AlgoRhythm}
 \subtitle{A Library for Algorithmic Music Composition}
 \author{Joris ten Tusscher, Cas van der Rest, Orestis Melkonian}
@@ -34,26 +44,138 @@
 
 \begin{document}
 	\maketitle
-	
-	\begin{frame}{Music DSL}
-	\todo{music representation (Music, MusicCore, Scale, Chord, etc...}\\
-	\todo{music manipulation (transpose, retrograde, time-scale, etc...}\\
+
+  \begin{frame}{Some definitions}
+    	\begin{itemize}
+    	\item
+        \textbf{Melody}: Notes played in \emph{sequence}
+        \item
+        \textbf{Chords/harmony}: Notes played \emph{simultaneously}
+        \item
+        \textbf{Scale}: a sequence of ascending notes, beginning and starting on the same note.
+    	\end{itemize}
+
+       	i.e: C major = C, D, E, F, G, A, B, C
+
+        Or in intervals: 2, 2, 1, 2, 2, 2, 1
+    \end{frame}
+
+    \begin{frame}{Some definitions}
+    	A piece of music is said to be in a \textbf{key} if it (primarily) uses notes from a certain scale
+
+        \textbf{Diatonic} music is music that uses scales that have the same pattern as we saw before (2,2,1,2,2,2,1).
+    \end{frame}
+
+    \begin{frame}[fragile=singleslide]{Music DSL: Representation}
+	Basically, you want to know when to make noise and when to remain silent.
+
+    Two pieces of music can be composed in parallel or sequentially.
+    \begin{minted}[baselinestretch=1, fontsize=\small, autogobble]{haskell}
+type Duration = Rational
+
+data Music a = Music a :+: Music a
+             | Music a :=: Music a
+             | Note Duration a
+             | Rest Duration
+    \end{minted}
 	\end{frame}
-		
+
+    \begin{frame}[fragile=singleslide]{Music DSL: Representation}
+    In order to provide export functionalities, we use a \icode{MusicCore} type and a typeclass \icode{ToMusicCore}.
+    \begin{minted}[baselinestretch=1, fontsize=\small, autogobble]{haskell}
+type PitchClass = C | Cs | D ... As | B
+type Octave = Oct0 | Oct1 ... Oct5 | Oct6
+type PitchAttribute = Dynamic Dynamic
+                    | Articulation Articulation
+
+type MusicCore =
+  Music ((PitchClass, Octave), [PitchAttribute])
+    \end{minted}
+
+    This ensures that all the necessary information is there when exporting a piece of music
+	\end{frame}
+    \begin{frame}[fragile=singleslide]{Music DSL: Representation}
+    (Abstract) scales and chords are represented as intervals between notes, i.e:
+
+    \icode{major = [P1,M2,M3,P4,P5,M6,M7] -- Major scale}
+    \icode{d7b5 = [P1, M3, A4, Mi7] -- Half diminished chord}
+
+    There are many constants for various scales and chords (, as well as common durations:
+
+    \begin{minted}[baselinestretch=1, fontsize=\small, autogobble]{haskell}
+qn = 1%4
+    \end{minted}
+	\end{frame}
+
+    \begin{frame}[fragile=singleslide]{Music DSL: Manipulation}
+	Music can be constructed and manipulated using various operators
+
+    \begin{minted}[baselinestretch=1, fontsize=\small, autogobble]{haskell}
+ -- quarter note C in the 4th octave, played softly
+ let n = (C#4 <: [PPP]) <| qn
+
+ -- A half note rest
+ let r = (hn~~)
+
+ -- Instantiate an abstract chord
+ let cMaj7 = ((C =| maj7) <#) 3 <|| wn
+    \end{minted}
+	\end{frame}
+
+    \begin{frame}[fragile=singleslide]{Music DSL: Manipulation}
+	A melody in our DSL:
+
+    \begin{minted}[baselinestretch=1, fontsize=\small, autogobble]{haskell}
+ line [ (C#6 <: [Dynamic PP]) <| wn
+      , (D#6 <: [Dynamic MP]) <| wn
+      , (hn~~)
+      , (C#6 <: [Dynamic F_]) <| qn
+      , (D#6 <: [Dynamic F_]) <| qn
+      , (C#6 <: [Dynamic F_]) <| qn
+      , (B#5 <: [Dynamic F_]) <| qn
+      , (D#6 <: [Dynamic MF]) <| qn
+      , (C#6 <: [Dynamic MP]) <| wn
+      , (F#5 <: [Dynamic P ]) <| wn
+      ]
+    \end{minted}
+	\end{frame}
+
+    \begin{frame}[fragile=singleslide]{Music DSL: Manipulation}
+	There's also some operators for common operations:
+
+    \begin{minted}[baselinestretch=1, fontsize=\small, autogobble]{haskell}
+ -- Transposition
+ C ~> M3 == E
+
+ -- Retrograded (mirroring)
+ let music' = (music><)
+
+ -- Time scaling
+ let music' = music *~ (1%5)
+
+    \end{minted}
+
+	Also, \icode{Music} is a functor!
+
+	\begin{minted}[baselinestretch=1, fontsize=\small, autogobble]{haskell}
+	let rhythm = const () <$> music
+    \end{minted}
+	\end{frame}
+
 	{\usebackgroundtemplate{%
   	\includegraphics[width=\paperwidth,height=\paperheight]{no-analysis.png}}
 	\begin{frame}{Focus on Generation, Ignore Analysis}
 	\end{frame}
-	}	
-	
+	}
+
 	\begin{frame}{Generation}
 	\todo{genState, selectors, diatonic improv, etc...}
 	\end{frame}
-	
+
 	\begin{frame}{Dynamic Performance}
 	\todo{k-means, etc...}
 	\end{frame}
-	
+
 	\begin{frame}[fragile=singleslide]{Grammars: Properties}
     (Generative) \textit{context-free grammars}, with a few extra features:
 	\begin{itemize}
@@ -62,7 +184,7 @@
 	\item \textbf{Graph}: Allow node sharing (using \textit{let}-expressions)
 	\end{itemize}
 	\end{frame}
-	
+
 	\begin{frame}[fragile=singleslide]{Grammars: Definition}
 	\begin{minted}[baselinestretch=1, fontsize=\small, autogobble]{haskell}
 data Grammar meta a =
@@ -70,10 +192,13 @@ data Grammar meta a =
 data Rule meta a =
     (a, Weight, Dur -> Bool) :-> (Dur -> Term meta a)
 data Term meta a =
-    a :%: Dur
+    a %: Dur
     | Term meta a :-: Term meta a
     | Aux Bool meta (Term meta a)
-    | Let (Term meta a) (Term meta a -> Term meta a)
+    | Let (Term meta a) (λb. Term () b -> Term () b)
+
+class Expand meta a b | meta a -> b where
+    expand :: Term meta a -> IO (Term () b)
 
 (a, w) -| f = (a, w, f) :-> (a %:)
 a |->  b = a :-> const b
@@ -82,45 +207,7 @@ a |--> b = (a, 1, always) |-> b
 (|$:) = Aux True
 	\end{minted}
 	\end{frame}
-	
-	\begin{frame}[fragile=singleslide]{Grammars: Generation}
 
-    	\begin{minted}[baselinestretch=1, fontsize=\footnotesize, autogobble]{haskell}
-gen :: (Eq a, Eq meta, Expand input meta a b)
-    => Grammar meta a -> input -> Dur -> Music b
-gen gr i t = rewrite gr t >>> unlet >>> expand i >>> toMusic
-	\end{minted}
-
-
-	\begin{enumerate}	
-	
-	\item \textbf{Given an initial duration, rewrite until fixpoint}
-	\begin{minted}[baselinestretch=1, fontsize=\footnotesize, autogobble]{haskell}
-rewrite :: (Eq a, Eq meta)
-        => Grammar meta a -> Dur -> Term meta a
-	\end{minted}
-	
-	\item \textbf{Unfold \textit{let}-expressions}
-	\begin{minted}[baselinestretch=1, fontsize=\footnotesize, autogobble]{haskell}
-unlet (Let x f) = f x
-unlet x         = x
-	\end{minted}
-	
-	\item \textbf{Expand auxiliary wrappers}
-	\begin{minted}[baselinestretch=1, fontsize=\footnotesize, autogobble]{haskell}
-class Expand input meta a b | input meta a -> b where
-    expand :: input -> Term meta a -> Term () b
-	\end{minted}
-	
-	\item \textbf{Convert to music}
-	\begin{minted}[baselinestretch=1, fontsize=\footnotesize, autogobble]{haskell}
-(:%:) ~> (<|)
-(:-:) ~> (:+:)
-	\end{minted}
-		
-	\end{enumerate}
-	\end{frame}	
-	
 	\begin{frame}[fragile=singleslide]{Grammars: Tabla Rhythm}
 	\begin{minted}[baselinestretch=1, fontsize=\small, autogobble]{haskell}
 tabla :: Grammar () Syllable
@@ -140,7 +227,7 @@ instance ToMusicCore Syllable where
     ...
 	\end{minted}
 	\end{frame}
-	
+
 	\begin{frame}[fragile=singleslide]{Grammars: Tonal Harmony}
 	\begin{minted}[baselinestretch=0.8, fontsize=\footnotesize, autogobble]{haskell}
 harmony :: Grammar Modulation Degree
@@ -149,65 +236,65 @@ harmony = I |:
     (I,  8, (> wn)) :-> \t ->
       Let (I%:t/2) (\x -> x :-: x)
   , (I,  6, (> hn) /\ (<= wn)) :-> \t ->
-      II:%:t/4 :-: V:%:t/4 :-: I:%:t/2
+      II%:t/4 :-: V%:t/4 :-: I%:t/2
   , (I,  2, (> hn) /\ (<= wn)) :-> \t ->
-      V:%:t/2 :-: I:%:t/2
+      V%:t/2 :-: I%:t/2
   , (I,  2) -| (<= wn)
     -- Modulations
-  , (V,  5, (> hn)) :-> \t -> Modulation P5 $: I:%:t
+  , (V,  5, (> hn)) :-> \t -> Modulation P5 $: I%:t
   , (V,  3) -| always
-  , (II, 2, (> hn)) :-> \t -> Modulation M2 |$: I:%:t
+  , (II, 2, (> hn)) :-> \t -> Modulation M2 |$: I%:t
   , (II, 8) -| always
   ]
 
-instance Expand Config Degree Modulation SemiChord where
+instance Expand Degree Modulation SemiChord where
     ...
 
 voiceLead :: Music SemiChord -> IO (Music Chord)
 	\end{minted}
-	\end{frame}	
-	
+	\end{frame}
+
 	\begin{frame}[fragile=singleslide]{Grammars: Jazz Improvisation}
 	\begin{minted}[baselinestretch=0.8, fontsize=\footnotesize, autogobble]{haskell}
 melody :: Grammar () NT
 melody = MQ |:
   [ -- Abstract Rhythm { MQ ~> Q }
-    (MQ,  1, (== qn)) |-> Q:%:qn
-  , (MQ, 25, (> (hn^.))) :-> \t -> Q:%:hn :-: MQ:%:(t - hn)
+    (MQ,  1, (== qn)) |-> Q%:qn
+  , (MQ, 25, (> (hn^.))) :-> \t -> Q%:hn :-: MQ%:(t - hn)
     ...
     -- Concrete Rhythm { Q ~> MN }
-  , (Q, 47, (== wn)) |-> MN:%:qn :-: Q:%:hn :-: MN:%:qn
+  , (Q, 47, (== wn)) |-> MN%:qn :-: Q%:hn :-: MN%:qn
   , (Q,  6, (== hn)) |->
-      MN:%:(qn^^^) :-: MN:%:(qn^^^) :-: MN:%:(qn^^^)
+      MN%:(qn^^^) :-: MN%:(qn^^^) :-: MN%:(qn^^^)
     ...
     -- Abstract Melody { MN ~> N }
-  , (MN, 1, (== wn)) |-> N:%:qn :-: N:%:qn :-: MN:%:hn
+  , (MN, 1, (== wn)) |-> N%:qn :-: N%:qn :-: MN%:hn
   , (MN, 1, (== qn)) |->
-      N:%:(en^^^) :-: N:%:(en^^^) :-: N:%:(en^^^)
+      N%:(en^^^) :-: N%:(en^^^) :-: N%:(en^^^)
     ...
     -- Concrete Melody { N ~> NT }
-  , (N, 50, (== qn)) |-> ChordTone:%:qn
-  , (N, 45, (== qn)) |-> Rest:%:qn
-  , (N,  1, (== en)) |-> ApproachTone:%:en
+  , (N, 50, (== qn)) |-> ColorTone%:qn
+  , (N, 45, (== qn)) |-> Rest%:qn
+  , (N,  1, (== en)) |-> ApproachTone%:en
     ...
   ]
 
 mkSolo :: Music SemiChord -> Music NT -> IO Melody
     \end{minted}
 	\end{frame}
-	
+
 	\begin{frame}[fragile=singleslide]{Demo: Code}
 	\begin{minted}[baselinestretch=0.9, fontsize=\footnotesize, autogobble]{haskell}
     orientalAlgebras = do
       let ?config = MusicConfig
-        { basePc      = A
-        , baseOct     = Oct3
-        , baseScale   = arabian
-        , chords      = equally allChords
-        , scales      = equally allScales
-        , octaves     = [(20, Oct4), (15, Oct5), (5, Oct6)]
-        , restWeight  = 0, ...
-        , tempo       = 6%5
+        { basePc  = A
+        , baseOct = Oct3
+        , baseScale = arabian
+        , chords  = equally allChords
+        , scales  = equally allScales
+        , octaves = [(20, Oct4), (15, Oct5), (5, Oct6)]
+        , colorWeight = 0, ...
+        , tempo = 6%5
         , instruments = [Piano, Sitar, Tabla]
         , beat = sn
         }
@@ -219,13 +306,12 @@ mkSolo :: Music SemiChord -> Music NT -> IO Melody
 	\end{minted}
   	\end{frame}
 
-	\begin{frame}[c]{Demo: Music score}
+	\begin{frame}[c]{Music score}
 	\centering
 	\vspace{-1.2cm}
 	\begin{center}
       \makebox[\textwidth]{\includegraphics[width=.73\paperwidth,angle=-90]{oriental.pdf}}
     \end{center}
 	\end{frame}
-  	
+
 \end{document}
- 
