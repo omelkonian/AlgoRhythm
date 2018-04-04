@@ -15,23 +15,29 @@ import           Data.Char                      (toUpper)
 import           Codec.Midi                     (importFile, Message(TrackEnd), Midi(..))
 import           Euterpea.IO.MIDI               (fromMidi)
 import qualified Euterpea as E
-import           Data.List                      (find)
+import           Data.List                      (find, intersect, sort)
 import           Control.Applicative            ((<|>))
 import           System.Directory               (doesFileExist, removeFile)
+import           System.Random                  (newStdGen, randomRs)
 
 import           Export
 import           Grammar                 hiding ((<|>))
 import           Music
 
--- | Takes a filename `f`, runs the given test `t` using that filename, and
---   immediately removes the file stored at `f` after the test finished.
-testAndCleanup f t = buildTestBracketed $ do
+-- | Generates a random filename `f` with the .midi extension, runs the given
+--   test `t` using that filename, and immediately removes the file stored at
+--   location `f` after the test finished. The reason that we have to generate
+--   random file names and cannot use the same one all the time is that tests
+--   can be exectued concurrently.
+testAndCleanup t = buildTestBracketed $ do
+  g     <- newStdGen
+  let f = take 8 (randomRs ('a','z') g) ++ ".midi"
   let test = t f
-  let cleanup = removeFile f
+  let cleanup = return () --removeFile f
   return (test, cleanup)
 
 midiTests = testGroup "MIDI export"
-  [ testAndCleanup "0.midi" $ \f -> testCase "Successfully write to file" $ do
+  [ testAndCleanup $ \f -> testCase "Successfully write to file" $ do
       let res = unsafePerformIO $ do
                   let ?harmonyConfig = defHarmonyConfig
                   let ?melodyConfig = defMelodyConfig
@@ -43,7 +49,7 @@ midiTests = testGroup "MIDI export"
 
   -- Check if the header is correct (HCodecs (which is used by Euterpea))
   -- doesn't check MIDI headers properly.
-  , testAndCleanup "1.midi" $ \f -> testCase "Correct Midi header" $ do
+  , testAndCleanup $ \f -> testCase "Correct Midi header" $ do
       {- See: https://www.csie.ntu.edu.tw/~r92092/ref/midi/
 
          4D546864     = "MThd", which represents the start of a MIDI header chunk.
@@ -69,12 +75,12 @@ midiTests = testGroup "MIDI export"
       let upperHex   = map toUpper hex
       upperHex @?= filter ('-'/=) midiHex
 
-  , testAndCleanup "2.midi" $ \_ -> testCase "Sequential music to Euterpea" $ do
+  , testCase "Sequential music to Euterpea" $ do
       let ?midiConfig = MIDIConfig (1%2) [AcousticGrandPiano]
       let m = toMusicCore $ C#4<|qn :+: Cs#3<|hn
       let mE = musicToE m
       let mEExpected = E.Modify (E.Tempo (1 % 2)) (
-                         E.Modify (E.Instrument E.AcousticGrandPiano) (
+                         E.Modify (E.Instrument AcousticGrandPiano) (
                            E.Prim (E.Note (1 % 4) ((E.C,4),[]))
                            E.:+:
                            E.Prim (E.Note (1 % 2) ((E.Cs,3),[]))
@@ -82,36 +88,36 @@ midiTests = testGroup "MIDI export"
                        )
       mE @?= mEExpected
 
-  , testAndCleanup "3.midi" $ \_ -> testCase "Parallel music to Euterpea" $ do
+  , testCase "Parallel music to Euterpea" $ do
       let ?midiConfig = MIDIConfig (1%4) [Piccolo]
       let m = toMusicCore $ G#1<|qn :=: Ds#6<|hn
       let mE = musicToE m
-      let mEExpected = E.Modify (E.Tempo (1 % 4)) (
-                         E.Modify (E.Instrument Piccolo) (
-                           E.Prim (E.Note (1 % 4) ((E.G,1),[]))
-                           E.:+:
-                           E.Prim (E.Note (1 % 2) ((E.Ds,6),[]))
-                         )
-                       )
-      compareMusic1s mEExpected mE
+      let mEExpected = E.Modify (E.Tempo (1 % 4)) (E.Modify (E.Instrument Piccolo) (
+                         E.Prim (E.Note (1 % 4) ((E.G,1),[]))
+                       ))
+                         E.:=:
+                       E.Modify (E.Tempo (1 % 4)) (E.Modify (E.Instrument Piccolo) (
+                         E.Prim (E.Note (1 % 2) ((E.Ds,6),[]))
+                       ))
+      mE @?= mEExpected
 
-  , testAndCleanup "4.midi" $ \f -> testCase "Sequential music to Midi and back" $ do
+  , testAndCleanup $ \f -> testCase "Sequential music to Midi and back" $ do
       let ?midiConfig = defaultMIDIConfig
       let m = toMusicCore $ C#4<|qn :+: Cs#3<|hn
       let mE1 = musicToE m
       unsafePerformIO $ do
         writeToMidiFile f m
         mE2 <- importFile f >>= \(Right m) -> return (fromMidi m)
-        return $ preprocess (preprocess mE2) @?= preprocess mE1
+        return $ compareMusic1s (preprocess mE1) (preprocess (preprocess mE2))
 
-  , testAndCleanup "5.midi" $ \f -> testCase "Parallel music to Midi and back" $ do
-      let ?midiConfig = defaultMIDIConfig
+  , testAndCleanup $ \f -> testCase "Parallel music to Midi and back" $ do
+      let ?midiConfig = MIDIConfig 1 [AcousticGrandPiano, Banjo]
       let m = toMusicCore $ G#1<|qn :=: Ds#6<|hn
       let mE1 = musicToE m
       unsafePerformIO $ do
         writeToMidiFile f m
         mE2 <- importFile f >>= \(Right m) -> return (fromMidi m)
-        return $ compareMusic1s mE1 mE2
+        return $ compareMusic1s (preprocess mE1) (preprocess (preprocess mE2))
   ]
 
 -- | Rewrites the Music1 that was read from a MIDI file, preprocesses it,
@@ -119,15 +125,34 @@ midiTests = testGroup "MIDI export"
 --   least 1 permutation that is exactly equal to the original Music1.
 compareMusic1s :: E.Music1 -> E.Music1 -> Assertion
 compareMusic1s mOriginal mRead = do
+  let mOriginalMs = commonModifiers [] mOriginal
+  let mOriginal'   = stripModifiers mOriginalMs mOriginal
+  let mReadMs     = commonModifiers [] mRead
+  let mRead'      = stripModifiers mReadMs mRead
   -- remove e.g. empty rests in iteration 1, rewrite in iteration 2.
-  let mReadPreprocessed = preprocess $ preprocess mRead
+  let mReadPreprocessed = preprocess $ preprocess mRead'
   let mReadPerms        = perms mReadPreprocessed
-  let (Just p)          = find (mOriginal==) mReadPerms <|> Just (head mReadPerms)
-  p @?= mOriginal
+  let (Just p)          = find (mOriginal'==) mReadPerms <|> Just (head mReadPerms)
+  (p, sort mReadMs) @?= (mOriginal', sort mOriginalMs)
+
+commonModifiers :: [E.Control] -> E.Music1 -> [E.Control]
+commonModifiers cs (E.Modify c m) = commonModifiers (c:cs) m
+commonModifiers cs (a E.:=: b)    = commonModifiers cs a `intersect` commonModifiers cs b
+commonModifiers cs (a E.:+: b)    = commonModifiers cs a `intersect` commonModifiers cs b
+commonModifiers cs _            = cs
+
+stripModifiers :: [E.Control] -> E.Music1 -> E.Music1
+stripModifiers cs (E.Modify c m) | elem c cs = stripModifiers cs m
+stripModifiers cs (E.Modify c m) | otherwise = E.Modify c (stripModifiers cs m)
+stripModifiers cs (a E.:=: b)    = stripModifiers cs a E.:=: stripModifiers cs b
+stripModifiers cs (a E.:+: b)    = stripModifiers cs a E.:+: stripModifiers cs b
+stripModifiers _   x             = x
 
 perms :: E.Music1 -> [E.Music1]
 perms (m1 E.:=: m2) = concatMap (\(m1',m2') -> [m1' E.:=: m2', m2' E.:=: m1']) (perms' m1 m2)
 perms (m1 E.:+: m2) = concatMap (\(m1',m2') -> [m1' E.:+: m2']) (perms' m1 m2)
+perms (E.Modify x (E.Modify y m)) = concatMap ops (perms m)
+  where ops m' = [E.Modify x (E.Modify y m'), E.Modify y (E.Modify x m')]
 perms (E.Modify x m) = map (E.Modify x) (perms m)
 perms prim = [prim]
 
