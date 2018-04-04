@@ -61,7 +61,7 @@ randomMelody = do
 --
 jazz :: IO ()
 jazz = do
-  let ?midiConfig = MIDIConfig (3%4) [AcousticGrandPiano]
+  let ?midiConfig = MIDIConfig (4%4) [AltoSax, AcousticGrandPiano]
   let t = 12 * wn
 
   -- Harmony.
@@ -83,7 +83,7 @@ jazz = do
         }
   foreground <- Gen.runGenerator () (Gen.diatonicMelody melodyConfig)
 
-  writeToMidiFile "jazz.midi" (foreground :=: toMusicCore background)
+  writeToMidiFile "jazz1.midi" (foreground :=: toMusicCore background)
 
 -- A piece with fast banjo playing
 fastBanjo :: IO ()
