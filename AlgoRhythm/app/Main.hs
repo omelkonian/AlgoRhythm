@@ -9,6 +9,8 @@ import Grammar
 import Music
 import qualified Generate as Gen
 
+import Control.Monad
+
 main :: IO ()
 main = do
   let ?harmonyConfig = HarmonyConfig
@@ -42,6 +44,19 @@ chaosBlues addDyn = do
   let ?midiConfig = defaultMIDIConfig
   writeToMidiFile "out.midi" m
   playDev 0 (if addDyn then dyn m else (toMusicCore m))
+
+simpleMelody :: IO ()
+simpleMelody = do
+  m <- Gen.runGenerator () $ replicateM 4 Gen.melodyInC
+  let ?midiConfig = MIDIConfig (4%4) [AcousticGrandPiano]
+  writeToMidiFile "out.midi" (line m)
+
+randomMelody :: IO ()
+randomMelody = do
+  m <- Gen.runGenerator () Gen.randomMelody
+  let ?midiConfig = MIDIConfig (4%4) [AcousticGrandPiano]
+  writeToMidiFile "out.midi" m
+
 
 --
 jazz :: IO ()

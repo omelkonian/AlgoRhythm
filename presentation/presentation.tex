@@ -168,8 +168,138 @@ qn = 1%4
 	\end{frame}
 	}
 
-	\begin{frame}{Generation}
-	\todo{genState, selectors, diatonic improv, etc...}
+  \begin{frame}[fragile=singleslide]{Generation: monadic interface}
+	We provide a simple monadic interface to allow users to steer the generation process
+
+    \begin{minted}[baselinestretch=1, fontsize=\small, autogobble]{haskell}
+type MusicGenerator s a = GenericMusicGenerator GenState s a
+
+type GenericMusicGenerator st s a = StateT (st s) IO a
+    \end{minted}
+	\end{frame}
+
+    \begin{frame}[fragile=singleslide]{Generation: monadic interface}
+	The \icode{GenState} type can be used to generate for the \icode{MusicCore} data type.
+
+    \begin{minted}[baselinestretch=1, fontsize=\small, autogobble]{haskell}
+data Entry s a = Entry { values      :: [(Weight, a)]
+                       , constraints :: [Constraint a]
+                       , selector    :: Selector s a
+                       }
+
+data GenState s = GenState { state     :: s
+                           , pc    :: Entry s PitchClass
+                           , oct   :: Entry s Octave
+                           , dur   :: Entry s Duration
+                           , itv   :: Entry s Interval
+                           , dyn   :: Entry s Dynamic
+                           , art   :: Entry s Articulation
+                           }
+    \end{minted}
+	\end{frame}
+
+    \begin{frame}[fragile=singleslide]{Generation: monadic interface}
+	\icode{Selector} determines how values are selected from the possible options and \icode{Accessor} tells you how to get to a value in the generation state.
+
+    \begin{minted}[baselinestretch=1, fontsize=\small, autogobble]{haskell}
+type Selector s a = s -> [(Weight, a)] -> IO (a, s)
+
+data Accessor st s a = Accessor
+  { getValue :: st s -> Entry s a
+  , setValue :: Entry s a -> st s -> st s
+  }
+    \end{minted}
+
+    Default accessors are included for \icode{MusicCore}: \icode{octave}, \icode{duration}, etc ...
+	\end{frame}
+
+    \begin{frame}[fragile=singleslide]{Generation: monadic interface}
+	Generate a few pitches within the E phrygian dominant scale:
+
+    \begin{minted}[baselinestretch=1, fontsize=\small, autogobble]{haskell}
+gen :: MusicGenerator () [PitchClass]
+gen = do
+  pitchClass >! (inScale E (harmonicMinor ~> P5)
+  20 .#. (pitchClass??)
+    \end{minted}
+
+    Running the generator (in the IO monad):
+
+    \begin{minted}[baselinestretch=1, fontsize=\small, autogobble]{haskell}
+notes <- runGenerator () gen
+    \end{minted}
+	\end{frame}
+
+    \begin{frame}[fragile=singleslide]{Generation: diatonic improvisation}
+	So, ho do we go about generating some actual music?
+	\end{frame}
+
+    \begin{frame}[fragile=singleslide]{Generation: diatonic improvisation}
+	Generating something playable (attempt 1):
+
+    \begin{minted}[baselinestretch=1, fontsize=\small, autogobble]{haskell}
+playable = do
+  pitches   <- 20 .#. (pitchClass??)
+  durations <- 20 .#. (duration??)
+  octaves   <- 20 .#. (octave??)
+  return (line $ zipWith (<|)
+    ((flip (<:) $ []) <$> zipWith (#) pitches octaves)
+    durations)
+    \end{minted}
+
+    Depending on your taste, this will probably sound rubbish
+	\end{frame}
+
+    \begin{frame}[fragile=singleslide]{Generation: diatonic improvisation}
+	Generating something playable (attempt 2):
+
+    \begin{minted}[baselinestretch=1, fontsize=\small, autogobble]{haskell}
+playable = do
+  pitchClass >! (inScale C major)
+  options <- (pitchClass?+)
+  rhythm  <- boundedRhythm (1 * wn) High
+  -- set options and generate pitches
+  pitchClass >+ map
+        (\(w, v) ->
+          if v `elem` (G =| d7 :: [PitchClass])
+            then (4 * w, v) else (w, v)) options
+  pitches <- (length rhythm) .#. (pitchClass??)
+  -- put everything together into a piece of music
+  let fullPitches = (flip (<:) $ []) <$>
+        (zipWith (#) pitches (repeat 4))
+  let gmaj7 = (toMusicCore . chord .
+        map (Note (1 * wn) . (flip (#)) 3)) (G =| d7)
+  return $ gmaj7 :=: line (zipWith (<|) fullPitches rhythm)
+    \end{minted}
+	\end{frame}
+
+    \begin{frame}[fragile=singleslide]{Generation: diatonic improvisation}
+    Using a simple heuristic and some tweaking, we can improve upon this result:
+    \begin{minted}[baselinestretch=1, fontsize=\small, autogobble]{haskell}
+diatonicPhrase dur density key scale chord octD = do
+    durations <- boundedRhythm dur density
+    octaves <- genAspect octave 4
+      (length durations) 2.0
+        (map (Arrow.first fromIntegral) octD)
+    pitches <- genAspect pitchClass key
+      (length durations) 1.3
+      (mergeWeights
+        (intervalWeights key  scale)
+        (semiChordWeights key chord))
+    let fullPitches = ((flip (<:) $ [])
+          <$> (zipWith (#) pitches octaves))
+    return $ line
+      (zipWith (<|) fullPitches durations)
+    \end{minted}
+	\end{frame}
+
+    \begin{frame}[fragile=singleslide]{Generation: diatonic improvisation}
+    However, as it turns out, this approach doesn't scale too well
+
+    Music is structured in many different ways; both on the micro and macro level.
+
+    The \icode{MusicGenerator} type simply doesn't allow you to generate macro-level structures
+    for your music in a nice way. It is too focused on the fundamentals.
 	\end{frame}
 
         \begin{frame}{Chaos in music}

@@ -86,8 +86,16 @@ putOptions accessor options = do
   entry <- getEntry accessor
   putEntry accessor (entry { values = options })
 
+getOptions :: Accessor st s a -> GenericMusicGenerator st s [(Weight, a)]
+getOptions accessor = do
+  entry <- getEntry accessor
+  return (values entry)
+
 (>+) :: Accessor st s a -> [(Weight, a)] -> GenericMusicGenerator st s ()
 (>+) = putOptions
+
+(?+) :: Accessor st s a -> GenericMusicGenerator st s [(Weight, a)]
+(?+) = getOptions
 
 setState :: s -> MusicGenerator s ()
 setState state' = modify (\st -> st { state = state' })

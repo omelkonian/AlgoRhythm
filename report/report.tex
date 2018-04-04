@@ -176,21 +176,19 @@ An aggregate example where the interface is used to generate a melody in the C m
 \begin{minted}[baselinestretch=1.1, fontsize=\small]{haskell}
 melodyInC :: MusicGenerator () MusicCore
 melodyInC = do
-  addConstraint pitchClass (inScale C major)
-  options <- getOptions pitchClass
-  rhythm  <- boundedRhythm (4 * wn) Medium
-  -- Chord tones are 4 times as likely to be picked
-  let options' = map
-        (\(w, v) ->
-          if v `elem` (instantiate G d7 :: [PitchClass])
-            then (4 * w, v) else (w, v)) options
+  pitchClass >! (inScale C major)
+  options <- (pitchClass?+)
+  rhythm  <- boundedRhythm (1 * wn) High
   -- set options and generate pitches
-  putOptions pitchClass options'
-  pitches <- replicateM (length rhythm) (pitchClass??)
+  pitchClass >+ map
+        (\(w, v) ->
+          if v `elem` (G =| d7 :: [PitchClass])
+            then (4 * w, v) else (w, v)) options
+  pitches <- (length rhythm) .#. (pitchClass??)
   -- put everything together into a piece of music
   let fullPitches = (flip (<:) $ []) <$> (zipWith (#) pitches (repeat 4))
   let gmaj7 = (toMusicCore . chord .
-        map (Note (4 * wn) . (flip (#)) 3)) (G =| d7)
+        map (Note (1 * wn) . (flip (#)) 3)) (G =| d7)
   return $ gmaj7 :=: line (zipWith (<|) fullPitches rhythm)
 \end{minted}
 

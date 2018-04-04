@@ -235,6 +235,32 @@ module Generate.Applications.Diatonic where
                          remainder (x:y:xs) p | p < snd y = (y:xs)
                                               | otherwise = remainder (y:xs) p
 
+  melodyInC :: MusicGenerator () MusicCore
+  melodyInC = do
+    pitchClass >! (inScale C major)
+    options <- (pitchClass?+)
+    rhythm  <- boundedRhythm (1 * wn) High
+    -- set options and generate pitches
+    pitchClass >+ map
+          (\(w, v) ->
+            if v `elem` (G =| d7 :: [PitchClass])
+              then (4 * w, v) else (w, v)) options
+    pitches <- (length rhythm) .#. (pitchClass??)
+    -- put everything together into a piece of music
+    let fullPitches = (flip (<:) $ []) <$> (zipWith (#) pitches (repeat 4))
+    let gmaj7 = (toMusicCore . chord .
+          map (Note (1 * wn) . (flip (#)) 3)) (G =| d7)
+    return $ gmaj7 :=: line (zipWith (<|) fullPitches rhythm)
+
+  randomMelody :: MusicGenerator () MusicCore
+  randomMelody = do
+    pitches   <- 20 .#. (pitchClass??)
+    durations <- 20 .#. (duration??)
+    octaves   <- 20 .#. (octave??)
+    return (line $ zipWith (<|)
+      ((flip (<:) $ []) <$> zipWith (#) pitches octaves)
+      durations)
+
   -- | Generate a (random) length for a phrase. A higher density will result in
   --   phrases with more notes allowed, in order to enforce that the average
   --   high density phrase will take roughly the same amount of time as the
