@@ -41,9 +41,10 @@ main = do
 chaosBlues :: Bool -> IO ()
 chaosBlues addDyn = do
   m <- Gen.genChaosMusic
+  let m' = if addDyn then dyn m else (toMusicCore m)
   let ?midiConfig = defaultMIDIConfig
-  writeToMidiFile "out.midi" m
-  playDev 0 (if addDyn then dyn m else (toMusicCore m))
+  writeToMidiFile "out.midi" m'
+  playDev 0 m'
 
 simpleMelody :: IO ()
 simpleMelody = do
