@@ -157,7 +157,7 @@ genChord :: Int -> MusicGenerator s Melody
 genChord n =
   chord <$> (map <$> (Note <$> rand)
                  <*> (zip <$> randN n <*> randN n))
-Scale
+
 -- | Runs a generator on the provided state
 runGenerator' :: st s -> GenericMusicGenerator st s a -> IO a
 runGenerator' st gen = fst <$> runStateT gen st
