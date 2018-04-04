@@ -80,7 +80,7 @@ module Generate.Applications.Diatonic where
   intervalWeights :: PitchClass -> [Interval]
                                 -> [(Weight, PitchClass)]
   intervalWeights key scale =
-    map (\(a, b) -> (a, instantiate key b)) $
+    map (\(a, b) -> (a, key =| b)) $
       filter (\(a, b) -> b `elem` scale) relativeWeights
 
   -- Convert a SemiChord to a list representing the relative
@@ -89,7 +89,7 @@ module Generate.Applications.Diatonic where
                                  -> [(Weight, PitchClass)]
   semiChordWeights key chord =
       map (
-      (\(a, b) -> (a, instantiate key b)) .
+      (\(a, b) -> (a, key =| b)) .
       (\pc ->
         relativeWeights!!(
           ((12 +
@@ -130,7 +130,7 @@ module Generate.Applications.Diatonic where
   -- | Constraint that requires all generated notes to be in a certain scale
   inScale :: PitchClass -> [Interval]
                         -> Constraint PitchClass
-  inScale key scale = (flip elem) (instantiate key scale :: [PitchClass])
+  inScale key scale = (flip elem) (key +| scale :: [PitchClass])
 
   -- | Note selector that generates a distribution based on the last
   --   note that was generated
@@ -181,8 +181,8 @@ module Generate.Applications.Diatonic where
                               -> MusicGenerator () [a]
   genAspect accessor initial n k options = trace (show n) $ do
     lift $ runGenerator initial $
-      do putOptions accessor options
-         putSelector accessor (beamSelector k accessor)
+      do accessor >+ options
+         accessor >? (beamSelector k accessor)
          replicateM n (accessor??)
 
   -- | Generate a diatonic phrase. Strictly speaking, the generated
@@ -196,7 +196,6 @@ module Generate.Applications.Diatonic where
                              -> MusicGenerator () MusicCore
   diatonicPhrase dur density key scale chord octD = do
     durations <- boundedRhythm dur density
-
     octaves <- genAspect octave 4
       (length durations) 2.0
         (map (Arrow.first fromIntegral) octD)
@@ -215,7 +214,7 @@ module Generate.Applications.Diatonic where
   --   between. The phraseses are aware of the chord they are over, so that they
   --   will use notes from the current chord with a higher probability.
   diatonicMelody :: GenConfig -> MusicGenerator () MusicCore
-  diatonicMelody config=
+  diatonicMelody config =
     let timeline = chordalTimeline (chords config)
       in f timeline 0
     where f [] pos = return $  Rest 0

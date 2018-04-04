@@ -64,21 +64,40 @@ getEntry accessor = do
   st <- get
   return $ getValue accessor st
 
+(?@) :: Accessor st s a -> GenericMusicGenerator st s (Entry s a)
+(?@) = getEntry
+
 putEntry :: Accessor st s a -> Entry s a -> GenericMusicGenerator st s ()
 putEntry accessor entry = modify $ setValue accessor entry
+
+(>@) :: Accessor st s a -> Entry s a -> GenericMusicGenerator st s ()
+(>@) = putEntry
 
 putSelector :: Accessor st s a -> Selector s a -> GenericMusicGenerator st s ()
 putSelector accessor sel = do
   entry <- getEntry accessor
   putEntry accessor (entry { selector = sel })
 
+(>?) :: Accessor st s a -> Selector s a -> GenericMusicGenerator st s ()
+(>?) = putSelector
+
 putOptions :: Accessor st s a -> [(Weight, a)] -> GenericMusicGenerator st s ()
 putOptions accessor options = do
   entry <- getEntry accessor
   putEntry accessor (entry { values = options })
 
+(>+) :: Accessor st s a -> [(Weight, a)] -> GenericMusicGenerator st s ()
+(>+) = putOptions
+
 setState :: s -> MusicGenerator s ()
 setState state' = modify (\st -> st { state = state' })
+
+(.#.) :: (Applicative m) => Int -> m a -> m [a]
+(.#.) = replicateM
+
+
+(>$) :: s -> MusicGenerator s ()
+(>$) = setState
 
 select :: Accessor GenState s a -> MusicGenerator s a
 select = gselect state setState
@@ -108,6 +127,9 @@ addConstraint accessor c = do
                           , selector    = selector e
                           }
 
+(>!) :: Accessor st s a -> Constraint a -> GenericMusicGenerator st s ()
+(>!) = addConstraint
+
 (??) :: Accessor GenState s a -> MusicGenerator s a
 (??) = select
 
@@ -135,7 +157,7 @@ genChord :: Int -> MusicGenerator s Melody
 genChord n =
   chord <$> (map <$> (Note <$> rand)
                  <*> (zip <$> randN n <*> randN n))
-
+Scale
 -- | Runs a generator on the provided state
 runGenerator' :: st s -> GenericMusicGenerator st s a -> IO a
 runGenerator' st gen = fst <$> runStateT gen st

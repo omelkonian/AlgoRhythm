@@ -23,16 +23,18 @@ chaos1 = do
 
 bSolo :: MusicGenerator (ChaosState D1) Melody
 bSolo = do
-  addConstraint pitchClass (`elem` [E, G, A, As, B, D])
+  addConstraint pitchClass (`elem` (E +| blues :: [PitchClass]))
   run1 <- local $ do
-    addConstraint octave   (`elem` [4,5])
-    addConstraint duration (`elem` [1%32, 1%16])
-    replicateM 12 genNote >>= return . line
+    octave   >! (`elem` [4,5])
+    duration >! (`elem` [1%32, 1%16])
+    notes <- 12 .#. genNote
+    return $ line notes
   run2 <- local $ do
-    addConstraint octave     (`elem` [2,3,4])
-    addConstraint duration   (`elem` [1%8, 1%16])
-    addConstraint pitchClass (`elem` [E, Fs, Gs, B, Cs])
-    replicateM 7 genNote >>= return . line
+    octave     >! (`elem` [2,3,4])
+    duration   >! (`elem` [1%8, 1%16])
+    pitchClass >! (`elem` [E, Fs, Gs, B, Cs])
+    notes <- 6 .#. genNote
+    return $ line notes
   return $ run1 :=: run2
 
 chaos1Selector :: Selector (ChaosState n) a
