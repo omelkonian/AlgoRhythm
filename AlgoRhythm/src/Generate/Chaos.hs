@@ -85,4 +85,5 @@ genNextIteration = do
     let vs = variables s
     let fs = updateFunctions s
     let newVs = fmap (\f -> f vs) fs
+    put (s { variables = newVs })
     return $ list newVs
