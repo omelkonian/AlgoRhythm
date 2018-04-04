@@ -10,49 +10,69 @@ import Control.Monad (void)
 import Control.Monad.State hiding (state)
 import System.IO.Unsafe
 
-chaosSelector :: Selector (ChaosState n) a
-chaosSelector s as = do
+data Mapping n = Mapping { pcSel  :: Selector (ChaosState n) PitchClass
+                         , octSel :: Selector (ChaosState n) Octave
+                         , durSel :: Selector (ChaosState n) Duration
+                         , itvSel :: Selector (ChaosState n) Interval
+                         , dynSel :: Selector (ChaosState n) Dynamic
+                         , artSel :: Selector (ChaosState n) Articulation
+                         }
+
+defaultMapping :: Mapping n
+defaultMapping = Mapping  { pcSel  = defaultChaosSelector
+                          , octSel = defaultChaosSelector
+                          , durSel = defaultChaosSelector
+                          , itvSel = defaultChaosSelector
+                          , dynSel = defaultChaosSelector
+                          , artSel = defaultChaosSelector
+                          }
+
+-- | Default Chaos selector, basically equivalnt to a speudorandom generation.
+--   Could also crash if a Chaos function is not well designed and converges
+--   to a stable point of 0.
+defaultChaosSelector :: Selector (ChaosState n) a
+defaultChaosSelector s as = do
   (ds, s') <- runStateT genNextIteration s
   let d = head ds
   let a = as !! (round (d * 10e100) `mod` length as)
   let !_ = unsafePerformIO $ print $ show ds
   return (snd a, s')
 
-chaosEntry :: (Enum a, Bounded a) => ChaosState n -> Entry (ChaosState n) a
-chaosEntry _ = Entry { values      = zip (repeat 1) [minBound ..]
-                          , constraints = []
-                          , selector    = chaosSelector
-                          }
+chaosEntry :: (Enum a, Bounded a) => ChaosState n -> Selector (ChaosState n) a -> Entry (ChaosState n) a
+chaosEntry _ sel = Entry { values      = zip (repeat 1) [minBound ..]
+                     , constraints = []
+                     , selector    = sel
+                     }
 
-chaosState :: ChaosState n -> GenState (ChaosState n)
-chaosState st = GenState { state = st
-                         , pc  = chaosEntry st
-                         , oct = chaosEntry st
+chaosState :: ChaosState n -> Mapping n -> GenState (ChaosState n)
+chaosState st m = GenState { state = st
+                         , pc  = chaosEntry st (pcSel m)
+                         , oct = chaosEntry st (octSel m)
                          , dur = Entry { values =
                                            zip (repeat 1) [1%1,1%2,1%4,1%8,1%16]
                                        , constraints = []
-                                       , selector    = chaosSelector
+                                       , selector    = (durSel m)
                                        }
-                         , itv = chaosEntry st
-                         , dyn = chaosEntry st
-                         , art = chaosEntry st
+                         , itv = chaosEntry st (itvSel m)
+                         , dyn = chaosEntry st (dynSel m)
+                         , art = chaosEntry st (artSel m)
                          }
 
 -- | Runs a generator on the chaos state.
-runGenerator :: ChaosState n -> MusicGenerator (ChaosState n) a -> IO a
-runGenerator = runGenerator' . chaosState
+runGenerator :: ChaosState n -> Mapping n -> MusicGenerator (ChaosState n) a -> IO a
+runGenerator s m g = runGenerator' (chaosState s m) g
 
 -- runGenerator :: s -> MusicGenerator s a -> IO a
 -- runGenerator = runGenerator' . quickCheckState
 
-clean :: ChaosState n -> MusicGenerator (ChaosState n) a -> MusicGenerator (ChaosState n) a
-clean s = modified (const $ chaosState s)
+clean :: ChaosState n -> Mapping n -> MusicGenerator (ChaosState n) a -> MusicGenerator (ChaosState n) a
+clean s m = modified (const $ chaosState s m)
 
-playGen :: ToMusicCore a => ChaosState n -> MusicGenerator (ChaosState n) (Music a) -> IO ()
-playGen s music = do
-  m <- runGenerator s music
+playGen :: ToMusicCore a => ChaosState n -> Mapping n -> MusicGenerator (ChaosState n) (Music a) -> IO ()
+playGen s m gen = do
+  music <- runGenerator s m gen
   let ?midiConfig = defaultMIDIConfig
-  playDev 4 m
+  playDev 4 music
 
 -- | Builds a ChaosState from two Vectors of the same length. This constraint
 --   is imposed since the number of variables should be equal to the number

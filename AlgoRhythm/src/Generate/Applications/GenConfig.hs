@@ -5,18 +5,18 @@ module Generate.Applications.GenConfig (
   , defaultGenConfig
 ) where
 
-  import Music
+import Music
 
 
-  -- | Denotes the global note density in a piece of music
-  data Density = High | Medium | Low
+-- | Denotes the global note density in a piece of music
+data Density = High | Medium | Low
 
-  data GenConfig = GenConfig { key                :: PitchClass
-                             , baseScale          :: [Interval]
-                             , chords             :: Music SemiChord
-                             , phraseDistribution :: [(Int, Density)]
-                             , octaveDistribution :: [(Int, Octave)]
-                             }
+data GenConfig = GenConfig { key                :: PitchClass
+                           , baseScale          :: [Interval]
+                           , chords             :: Music SemiChord
+                           , phraseDistribution :: [(Int, Density)]
+                           , octaveDistribution :: [(Int, Octave)]
+                           }
 
-  defaultGenConfig :: GenConfig
-  defaultGenConfig = undefined
+defaultGenConfig :: GenConfig
+defaultGenConfig = undefined

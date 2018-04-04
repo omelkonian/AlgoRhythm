@@ -33,7 +33,7 @@ testAndCleanup t = buildTestBracketed $ do
   g     <- newStdGen
   let f = take 8 (randomRs ('a','z') g) ++ ".midi"
   let test = t f
-  let cleanup = return () --removeFile f
+  let cleanup = removeFile f
   return (test, cleanup)
 
 midiTests = testGroup "MIDI export"
