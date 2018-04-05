@@ -4,25 +4,35 @@ module TScore where
 
 import qualified Data.Music.Lilypond            as Ly
 import           Data.Ratio
-import           System.Directory               (doesFileExist)
 import           System.IO.Unsafe               (unsafePerformIO)
-import           Test.Framework                 (testGroup)
+import           Test.Framework                 (testGroup, buildTestBracketed)
 import           Test.Framework.Providers.HUnit (testCase)
 import           Test.HUnit
+import           System.Directory               (doesFileExist, removeFile)
+import           System.Random                  (newStdGen, randomRs)
 
 import Export
 import Grammar
 import Music
 
+
+testAndCleanup t = buildTestBracketed $ do
+  g     <- newStdGen
+  let f = take 8 (randomRs ('a','z') g) ++ ".ly"
+  let test = t f
+  let cleanup = removeFile f
+  return (test, cleanup)
+
 scoreTests = testGroup "Score"
-  [ testCase "successfully write to file" $
-      let res = do let f = "test.ly"
-                   let ?harmonyConfig = defHarmonyConfig
+  [ testAndCleanup $ \t -> testCase "successfully write to file" $ do
+      let res = do let ?harmonyConfig = defHarmonyConfig
                    let ?melodyConfig = defMelodyConfig
-                   (back, fore) <- integrate (2 * wn) -- TODO larger pieces eat up RAM :(
-                   _ <- writeToLilypondFile f (back :=: fore)
-                   doesFileExist f
-      in  unsafePerformIO res @?= True,
+                   let ?tablaBeat = sn
+                   m <- runGrammar tabla wn ()
+                   -- (back, fore) <- integrate (4 * wn)
+                   _ <- writeToLilypondFile t m
+                   doesFileExist t
+      unsafePerformIO res @?= True,
     testCase "Split a note duration into powers of 2" $
       splitDurations (11 % 16) @?= [1%2, 1%8, 1%16],
     testCase "Correctly tie notes while generating score" $
