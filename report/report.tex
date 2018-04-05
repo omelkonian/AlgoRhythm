@@ -50,7 +50,7 @@
 \begin{document}
 \maketitle
 \epigraph{\textit{Putting the 'funk' back in functional programming}}{\textit{Anonymous programmer}}
- 
+
 \section{Domain}
 We set out to implement a Haskell library for algorithmic music composition.
 \subsection{Algorithmic music composition}
@@ -157,12 +157,12 @@ hypnotic = 2%5 *~ cascades :+: (cascades ><)
 \subsection{Generation DSL}
 The monadic interface allows for relatively easy manipulation of the generation process. There are a few ways in which a user may influence the way in which the music is generated. They include adding constraints, choosing selectors and setting the frequency/probability for individual elements.
 \begin{minted}[baselinestretch=1.1, fontsize=\small]{haskell}
--- Add a new constraint (only quarter notes or faster)
-addConstraint duration (<= qn)
+-- Add a new constraint (only quarter notes or shorter
+duration >! (<= qn)
 -- Provide a custom selector
-putSelector pitchClass mySelector
+pitchClass >? mySelector
 -- Provide a custom distribution for elements (favor louder dynamics)
-putOptions dynamics [(0.01, PPPPP), (0.05, PPPP), ... , (0.3, FFFF)]
+dynamics >+ [(0.01, PPPPP), (0.05, PPPP), ... , (0.3, FFFF)]
 \end{minted}
 
 An aggregate example where the interface is used to generate a melody in the C major scale over a G7 chord with a length of 4 whole notes is shown below:
@@ -220,3 +220,4 @@ Regarding grammars, one problem we were not able to overcome, was implementing a
 \bibliography{sources}
 
 \end{document}
+  
