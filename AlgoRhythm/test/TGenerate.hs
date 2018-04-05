@@ -7,7 +7,7 @@ import           Test.Framework.Providers.HUnit (testCase)
 import           System.IO.Unsafe               (unsafePerformIO)
 import           Test.HUnit
 
-import           Generate
+import           Generate hiding (melodyInC)
 import           Generate.QuickCheck
 import           Music
 import           Data.Ratio

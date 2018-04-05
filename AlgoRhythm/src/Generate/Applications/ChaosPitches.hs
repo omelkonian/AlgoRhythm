@@ -3,7 +3,10 @@
 -- | An example implementation of a `Generate.Chaos` that generates music with
 --   chaotic octave and pitch selection.
 module Generate.Applications.ChaosPitches (
-  genChaosMusic) where
+    genChaosMusic
+  , chaos1
+  , bSolo
+  , chaos1Selector) where
 
 import Music
 import Utils.Vec
@@ -18,6 +21,8 @@ genChaosMusic = do
   let mapping = defaultMapping {pcSel=chaos1Selector, octSel=chaos1Selector }
   runChaosGenerator chaos1 mapping bSolo
 
+-- | ChaosState with chaos function f x = 1 - 1.9521 * x^2 in range [-1,1]
+--   with initial x = 1.2.
 chaos1 :: ChaosState D1
 chaos1 = do
   let startX = 1.2
@@ -25,6 +30,7 @@ chaos1 = do
   where f :: (Vec D1 Double -> Double)
         f (x:.Nil) = max (-1) (min 1 (1 - 1.9521 * x**2))
 
+-- | `MusicGenerator` that uses `chaos1` to generate some blues music.
 bSolo :: MusicGenerator (ChaosState D1) Melody
 bSolo = do
   addConstraint pitchClass (`elem` (E +| blues :: [PitchClass]))
@@ -41,6 +47,7 @@ bSolo = do
     return $ line notes
   return $ run1 :=: run2
 
+-- | The selector that maps the chaos function from `chaos1` to an element in a.
 chaos1Selector :: Selector (ChaosState n) a
 chaos1Selector s as = do
   ([d], s') <- runStateT genNextIteration s
