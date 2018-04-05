@@ -4,11 +4,8 @@
 \usepackage{amssymb}
 
 % Geometry
-\usepackage{titling}
-\setlength{\droptitle}{-7em}
-
-% Timeline
-\usepackage{chronosys}
+%\usepackage{titling}
+%\setlength{\droptitle}{-7em}
 
 % Code
 \usepackage{minted}
@@ -36,6 +33,10 @@
 \definecolor{linkcolour}{rgb}{0,0.2,0.6}
 \hypersetup{colorlinks,breaklinks,urlcolor=linkcolour,linkcolor=linkcolour,citecolor=blue}
 
+% Quotes
+\usepackage{epigraph}
+\renewcommand{\epigraphwidth}{8cm}
+
 % Title
 \title{\textbf{\Large{AlgoRhythm: A Library for Algorithmic Music Composition} \\ \small{AFP: Final Report}}}
 \author{\small{Joris ten Tusscher, Cas van der Rest, Orestis Melkonian}}
@@ -48,7 +49,8 @@
 
 \begin{document}
 \maketitle
-
+\epigraph{\textit{Putting the 'funk' back in functional programming}}{\textit{Anonymous programmer}}
+ 
 \section{Domain}
 We set out to implement a Haskell library for algorithmic music composition.
 \subsection{Algorithmic music composition}
@@ -87,12 +89,12 @@ Futhermore, we define common constants (e.g. scales, chords), useful types of mu
 Export functionality is provided for both \texttt{.midi} files and \texttt{.ly} files, which can be converted to PDF using \href{https://lilypond.org}{Lilypond}.
 
 \subsubsection{Musical Score}
-Any value of type \icode{Music} can be converted to a Lilypond file representing a musical score using \icode{writeToLilypondFile "music.ly" m} functions, provided that \icode{m} is a member of the \icode{ToMusicCore} type class, meaning that it can be converted to the \icode{MusicCore} type. Assuming that the user has Lilypond installed on their system, the generated file can be converted into a PDF using \icode{lilypond music.ly}. An example of a generated score can be found in figure ?.
+Any value of type \icode{Music} can be converted to a Lilypond file representing a musical score using \icode{writeToLilypondFile "music.ly" m} functions, provided that \icode{m} is a member of the \icode{ToMusicCore} type class, meaning that it can be converted to the \icode{MusicCore} type. Assuming that the user has Lilypond installed on their system, the generated file can be converted into a PDF using \icode{lilypond music.ly}.
+
 \subsubsection{MIDI files}
 The music representation DSL is very different from how music is represented in MIDI: whereas the DSL has Notes, Rests and methods for music composition, MIDI is just one big chain of events. For example, a Note in the DSL with duration $d$ would be represented in MIDI by a NoteOn event with a certain timestamp $t$ and a NoteOff event with timestamp $t+d$. There are \emph{many} differences however, and therefore the decision was made to not write all the conversion code manually. Instead, Euterpea has been used to convert music from the DSL to a MIDI file, or to a MIDI stream that can be played in real time. Since Euterpea's DSL is very similar to the DSL that was created for this project, it made MIDI export a lot easier.
 
 \subsection{Generation}
-\todo{monadic interface, selectors, etc...}
 A simple, constraint based, monadic interface is included in order to allow a user to program their own music generators. This interface is defined as a combined \icode{State} and \icode{IO} monad: \icode{type GenericMusicGenerator st s a = StateT (st s) IO a}. We provide an instance of this interface to generate for the types used in the representation DSL, defined as \icode{type MusicGenerator s a = GenericMusicGenerator GenState s a}.
 
 \subsubsection{Default generation state}
@@ -116,10 +118,10 @@ For brevity's sake, we eschew a formal definition of our grammars, and immediate
 \begin{minted}[baselinestretch=1.1, fontsize=\small]{haskell}
 data Grammar meta a = Grammar { initial :: a, rules :: [Rule meta a] }
 data Rule meta a = (a, Weight, Duration -> Bool) :-> (Duration -> Term meta a)
-data Term meta a = Prim (a, Duration)                             -- primitive
-                 | Term meta a :-: Term meta a                     -- sequence
-                 | Aux Bool meta (Term meta a)          -- auxiliary modifiers
-                 | Let (Term meta a) (forall b. Term () b -> Term () b) -- let
+data Term meta a = a :%: Duration                           -- primitive
+                 | Term meta a :-: Term meta a               -- sequence
+                 | Aux Bool meta (Term meta a)    -- auxiliary modifiers
+                 | Let (Term meta a) (Term meta a -> Term meta a) -- let
 \end{minted}
 
 Given an initial symbol and some initial value of type \icode{input}, the grammar expansion will begin rewriting by a randomly-picked activated rule, up to fixpoint. A rule's body can be a primitive terminal symbol of a certain duration, a sequence of terms, a term wrapped with auxiliary metadata which will be used in a post-processing step, or a let-expression of a term, which will share a rewritten term in the let's body (when fixpoint is reached).
@@ -154,45 +156,36 @@ hypnotic = 2%5 *~ cascades :+: (cascades ><)
 
 \subsection{Generation DSL}
 The monadic interface allows for relatively easy manipulation of the generation process. There are a few ways in which a user may influence the way in which the music is generated. They include adding constraints, choosing selectors and setting the frequency/probability for individual elements.
-
 \begin{minted}[baselinestretch=1.1, fontsize=\small]{haskell}
 -- Add a new constraint (only quarter notes or faster)
-addConstraint duration (<=(1%4))
-
+addConstraint duration (<= qn)
 -- Provide a custom selector
 putSelector pitchClass mySelector
-
--- Provide a custom distribution for elements (favor higher octaves)
-putOptions dynamics
-  [ (0.01, PPPPP)
-  , (0.05, PPPP)
-  ...
-  , (0.3, FFFF)
-  ]
+-- Provide a custom distribution for elements (favor louder dynamics)
+putOptions dynamics [(0.01, PPPPP), (0.05, PPPP), ... , (0.3, FFFF)]
 \end{minted}
 
 An aggregate example where the interface is used to generate a melody in the C major scale over a G7 chord with a length of 4 whole notes is shown below:
-
 \begin{minted}[baselinestretch=1.1, fontsize=\small]{haskell}
 melodyInC :: MusicGenerator () MusicCore
 melodyInC = do
   pitchClass >! (inScale C major)
   options <- (pitchClass?+)
-  rhythm  <- boundedRhythm (1 * wn) High
+  rhythm  <- boundedRhythm wn High
   -- set options and generate pitches
   pitchClass >+ map
         (\(w, v) ->
-          if v `elem` (G =| d7 :: [PitchClass])
+          if v `elem` G =| d7
             then (4 * w, v) else (w, v)) options
-  pitches <- (length rhythm) .#. (pitchClass??)
+  pitches <- length rhythm .#. (pitchClass??)
   -- put everything together into a piece of music
-  let fullPitches = (flip (<:) $ []) <$> (zipWith (#) pitches (repeat 4))
+  let fullPitches = (flip (<:) []) <$> zipWith (#) pitches (repeat 4)
   let gmaj7 = (toMusicCore . chord .
-        map (Note (1 * wn) . (flip (#)) 3)) (G =| d7)
-  return $ gmaj7 :=: line (zipWith (<|) fullPitches rhythm)
+        map (Note wn . (flip (#)) 3)) (G =| d7)
+  return (gmaj7 :=: line (zipWith (<|) fullPitches rhythm))
 \end{minted}
 
-The monadic interface allows for easy implementation of simple heuristics, as demonstrated above. A more involved example of this can be found in the \icode{Generate.Applications.Diatonic} module, which generates melodies based on the idea that smaller intervals (steps and skips) between consecutive notes are more common than larger intervals (leaps).
+The monadic interface allows for easy implementation of simple heuristics, as demonstrated above. A more involved example of this can be found in the \href{https://github.com/omelkonian/AlgoRhythm/tree/master/AlgoRhythm/src/Generate/Applications}{Generate.Applications.Diatonic} module, which generates melodies based on the idea that smaller intervals (steps and skips) between consecutive notes are more common than larger intervals (leaps).
 
 \subsection{Grammars}
 To showcase the generative power of our grammars, we implement grammars all basic elements of music, namely harmony, melody and rhythm. To save space, we only explain the intuition behind each grammar and refer the reader to the actual implementations.
@@ -223,7 +216,6 @@ As it turned out, the selected monadic approach does not scale well in order to 
 
 Regarding grammars, one problem we were not able to overcome, was implementing a grammar for jazz chord progressions, as proposed by Steedman\cite{jazzchords}, since it required context-sensitive features and that would make our grammar implementation overly complicated and necessarily slower.\\
 
-\newpage
 \bibliographystyle{ieeetr}
 \bibliography{sources}
 
