@@ -1,7 +1,9 @@
 {-# language GADTs #-}
 
--- | Generates pitches using a Chaos function.
-module Generate.Applications.ChaosPitches where
+-- | An example implementation of a `Generate.Chaos` that generates music with
+--   chaotic octave and pitch selection.
+module Generate.Applications.ChaosPitches (
+  genChaosMusic) where
 
 import Music
 import Utils.Vec
@@ -9,6 +11,8 @@ import Generate.Generate
 import Control.Monad.State hiding (state)
 import Generate.Chaos
 
+-- | Generates `Music` with chaos function f x = 1 - 1.9521 * x^2 in range [-1,1]
+--   with initial x = 1.2.
 genChaosMusic :: IO (Music Pitch)
 genChaosMusic = do
   let mapping = defaultMapping {pcSel=chaos1Selector, octSel=chaos1Selector }

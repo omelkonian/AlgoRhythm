@@ -1,6 +1,8 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE ImplicitParams #-}
 
+-- | A `MusicGenerator` that uses Chaos functions.
+
 module Generate.Chaos where
 
 import Music
@@ -9,6 +11,7 @@ import Generate.Generate
 import Export
 import Control.Monad.State hiding (state)
 
+-- | Selectors for all `Generate.Generate.GenState` elements.
 data Mapping n = Mapping { pcSel  :: Selector (ChaosState n) PitchClass
                          , octSel :: Selector (ChaosState n) Octave
                          , durSel :: Selector (ChaosState n) Duration
@@ -17,6 +20,8 @@ data Mapping n = Mapping { pcSel  :: Selector (ChaosState n) PitchClass
                          , artSel :: Selector (ChaosState n) Articulation
                          }
 
+-- | Default `Mapping` that just grabs the first element from the list of
+--   possible values.
 defaultMapping :: Mapping n
 defaultMapping = Mapping  { pcSel  = defaultChaosSelector
                           , octSel = defaultChaosSelector
@@ -31,12 +36,14 @@ defaultChaosSelector :: Selector (ChaosState n) a
 defaultChaosSelector s as = do
   return (snd (head as), s)
 
+-- | Generates an `Entry` based on a `ChaosState` and `Selector`.
 chaosEntry :: (Enum a, Bounded a) => ChaosState n -> Selector (ChaosState n) a -> Entry (ChaosState n) a
 chaosEntry _ sel = Entry { values      = zip (repeat 1) [minBound ..]
                      , constraints = []
                      , selector    = sel
                      }
 
+-- | Builds a `GenState` with a `ChaosState` based on a `ChaosState` and `Mapping`
 chaosState :: ChaosState n -> Mapping n -> GenState (ChaosState n)
 chaosState st m = GenState { state = st
                          , pc  = chaosEntry st (pcSel m)
@@ -55,9 +62,11 @@ chaosState st m = GenState { state = st
 runChaosGenerator :: ChaosState n -> Mapping n -> MusicGenerator (ChaosState n) a -> IO a
 runChaosGenerator s m g = runGenerator' (chaosState s m) g
 
+-- | Cleans the `MusicGenerator`
 cleanChaos :: ChaosState n -> Mapping n -> MusicGenerator (ChaosState n) a -> MusicGenerator (ChaosState n) a
 cleanChaos s m = modified (const $ chaosState s m)
 
+-- | Generates music and plays it using Midi on device 0.
 playChaosGen :: ToMusicCore a => ChaosState n -> Mapping n -> MusicGenerator (ChaosState n) (Music a) -> IO ()
 playChaosGen s m gen = do
   music <- runChaosGenerator s m gen
@@ -72,13 +81,16 @@ buildChaos :: Vec n Double                   -- ^ Initial variable values
            -> ChaosState n
 buildChaos vs fs = ChaosState { variables=vs , updateFunctions=fs}
 
+-- | The default `ChaosState` that is used for Chaotic generation.
 data ChaosState n =
   ChaosState { variables       :: Vec n Double
              , updateFunctions :: Vec n (Vec n Double -> Double)
              }
 
+-- | The `ChaosState wrapped in a `StateT` monad.`
 type ChaosGenerator n = StateT (ChaosState n) IO
 
+-- | Calculates the next iteration of values for the `ChaosState`.
 genNextIteration :: ChaosGenerator n [Double]
 genNextIteration = do
     s <- get
