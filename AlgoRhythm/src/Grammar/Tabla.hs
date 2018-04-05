@@ -45,7 +45,8 @@ instance ToMusicCore TablaNote where
 (|-->) :: (?tablaBeat :: Duration) => a -> [a] -> Rule meta a
 x |--> xs = (x, 1, always) |-> foldl1 (:-:) (map (:%: ?tablaBeat) xs)
 
--- | Grammar for tabla improvisation.
+-- | Grammar for tabla improvisation based on the paper:
+-- "Modelling Improvisatory and Compositional Processes" by Bernard Bel.
 tabla :: (?tablaBeat :: Duration) => Grammar () TablaNote
 tabla = Start |:
   [ (Start, 1, always) :-> \t ->

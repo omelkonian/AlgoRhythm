@@ -16,6 +16,9 @@ data Degree =
   | Piece | Phrase | Tonic | Dominant | SubDominant
   deriving (Eq, Show, Enum, Bounded)
 
+-- | Simplified version of 'TonalHarmony', based on the paper:
+-- "Functional Generation of Harmony and Melody"
+-- by José Pedro Magalhaes & Hendrik Vincent Koops.
 uuHarmony :: Grammar H.Modulation Degree
 uuHarmony = Piece |:
   [ (Piece, 1, always) :-> \t -> foldr1 (:-:) $ replicate (t // (4 * wn)) $ Phrase:%:(4 * wn)

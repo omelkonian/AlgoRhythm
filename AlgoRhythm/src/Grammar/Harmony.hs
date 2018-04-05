@@ -17,7 +17,7 @@ data Degree = I | II | III | IV | V | VI | VII
 -- | Auxiliary wrapper for modulating keys.
 newtype Modulation = Modulation Interval deriving (Eq, Show)
 
--- | Grammar for harmonic structures.
+-- | Custom grammar for harmonic structure.
 harmony :: Grammar Modulation Degree
 harmony = I |:
   [ -- Turn-arounds
@@ -26,18 +26,11 @@ harmony = I |:
   , (I, 6, (> hn) /\ (<= wn)) :-> \t -> II:%:t/4 :-: V:%:t/4 :-: I:%:t/2
   , (I, 2, (> hn) /\ (<= wn)) :-> \t -> V:%:t/2 :-: I:%:t/2
   , (I, 2) -|| (<= wn)
-    -- TODO ++
-
     -- Modulations
   , (V, 5, (> hn)) :-> \t -> Modulation P5 $: I:%:t
   , V -| 3
-  -- , (II, 2, (> hn)) :-> \t -> Modulation M2 |$: I%:t
-  -- , II -| 8
-    -- TODO ++
-
     -- Tritone substitution
-  -- , (V, 2, (> hn)) :-> \t -> Let (V%:t/4 :-: Modulation A4 |$: V%:t/4) (\x -> x :-: x)
-    -- TODO ++
+  , (V, 1, (> hn)) :-> \t -> Let (V:%:t/2) (\x -> (Modulation A4 |$: x) :-: x)
   ]
 
 -- | Expands modulations and intreprets degrees to chords.

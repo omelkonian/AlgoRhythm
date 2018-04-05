@@ -19,6 +19,8 @@ data Degree =
 (|~>) :: Head [a] -> (a -> Body meta a) -> [Rule meta a]
 (xs, w, activ) |~> k = [(x, w, activ) :-> k x | x <- xs]
 
+-- | Grammar for tonal harmony, based on the paper:
+-- "Towards a Generative Syntax of Tonal Harmony" by Martin Rohrmeier.
 tonalHarmony :: Grammar H.Modulation Degree
 tonalHarmony = Piece |:
   [ -- Phrase level

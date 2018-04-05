@@ -24,7 +24,8 @@ data NT = MQ -- Meta-rhythm
         | R  -- rest
         deriving (Eq, Show)
 
--- | Grammar for melodic lines.
+-- | Grammar for melodic lines based on the paper:
+-- "A Grammatical Approach to Automatic Improvisation" by Robert M. Keller.
 melody :: Grammar () NT
 melody = MQ |:
   [ -- Rhythm { expand MQ(*) to multiple Q(wn), Q(hn) and Q(qn) }
