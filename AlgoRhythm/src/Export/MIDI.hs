@@ -1,4 +1,5 @@
 {-# LANGUAGE ImplicitParams #-}
+-- | Can be used to export `Music` to a Midi file, or to play it in real time.
 module Export.MIDI (
     module Export.MIDIConfig
   , writeToMidiFile
@@ -31,12 +32,12 @@ play :: (ToMusicCore a, ?midiConfig :: MIDIConfig)
 play = toMusicCore >>> musicToE >>> E.play
 
 -- | Converts `MusicCore` to `Codec.Midi.Midi`. Note that this is done using
---   Euterpea's toMidi function, which does not return a Euterpea defined
---   Midi type, but rather a Midi type from the HCodecs library.
+--   Euterpea's `toMidi` function, which does not return a Euterpea defined
+--   Midi type, but rather a Midi type from the `HCodecs` library.
 musicToMidi :: (?midiConfig :: MIDIConfig) => MusicCore -> Midi
 musicToMidi m = E.toMidi $ E.perform $ musicToE m
 
--- | Converts MusicCore to Euterpea Music1 using a MIDIConfig.
+-- | Converts `MusicCore` to Euterpea `E.Music1` using a `MIDIConfig`.
 musicToE :: (?midiConfig :: MIDIConfig) => MusicCore -> E.Music1
 musicToE ms =
   E.chord1 [ foldr E.Modify (musicToE' m) modifiers

@@ -3,6 +3,8 @@
 
 {-# OPTIONS_GHC -fno-warn-unticked-promoted-constructors #-}
 
+-- | Can be used to encode natural numbers as types.
+
 module Utils.Peano (
     Nat  (..)
   , SNat (..)
@@ -13,11 +15,14 @@ module Utils.Peano (
 
 import Language.Haskell.TH
 
+-- | Singleton definition for `Nat`
 data SNat n where
   SZ :: SNat Z
   SS :: SNat n -> SNat (S n)
 
-data Nat = Z | S Nat
+-- | Typelevel Peano numbers.
+data Nat = Z     -- ^ Zero
+         | S Nat -- ^ Successor
 instance Show Nat where
   show = ("D"++) . show . toInt
 
@@ -32,10 +37,12 @@ derivePeanoAliases nr = do
   where tAliases n   = reverse (foldr nextIter [ConT (mkName "Z")] [0..n])
         nextIter _ b = (AppT (ConT (mkName "S")) (head b)) : b
 
+-- | Converts a `Nat` to its `Int` representation.
 toInt :: Nat -> Int
 toInt Z = 0
 toInt (S x) = 1 + (toInt x)
 
+-- | Converts an `Int` to its `Nat` representation.
 toNat :: Int -> Nat
 toNat 0 = Z
 toNat n = S (toNat (n-1))

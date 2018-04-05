@@ -2,7 +2,8 @@ module Dynamics ( addDynamics
                 , dyn
                 , sinTimeDynamics
                 , sinPitchDynamics
-                , expPitchDynamics) where
+                , expPitchDynamics
+                , DynamicsMap) where
 
 import Data.KMeans (kmeansGen)
 import Data.List   (find)
@@ -41,9 +42,11 @@ sinPitchDynamics x _ = 0.25 + (0.25 * sin (2 * pi * x))
 expPitchDynamics :: DynamicsMap
 expPitchDynamics _ y = max 0.45 (min 0.8 (-log (1 - y)))
 
+-- | Adds `Dynamic` to all notes in the given `Music` using `expPitchDynamics`.
 dyn :: (ToMusicCore a) => Music a -> MusicCore
 dyn m = addDynamics m expPitchDynamics
 
+-- | Adds `Dynamic` to all notes in the given `Music` using the given `DynamicsMap`
 addDynamics :: (ToMusicCore a) => Music a -> DynamicsMap -> MusicCore
 addDynamics m' dynMap = do
   let m = toMusicCore m'
