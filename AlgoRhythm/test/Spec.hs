@@ -1,5 +1,4 @@
-import Test.Framework                 (defaultMain, testGroup)
-import Test.Framework.Providers.HUnit
+import Test.Framework                 (defaultMain)
 
 import TGrammar  (grammarTests)
 import TMidi     (midiTests)
@@ -9,6 +8,7 @@ import TVec      (vecTests)
 import TGenerate (genTests)
 import TChaos    (chaosTests)
 
+main :: IO ()
 main = defaultMain [ musicTests
                    , scoreTests
                    , midiTests

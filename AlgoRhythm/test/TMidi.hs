@@ -1,34 +1,35 @@
+{-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 {-# LANGUAGE ImplicitParams      #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module TMidi where
 
-import           System.Directory               (doesFileExist)
-import           System.IO.Unsafe               (unsafePerformIO)
-import           Test.Framework                 (testGroup, buildTestBracketed)
-import           Test.Framework.Providers.HUnit (testCase)
-import           Test.Framework.Providers.API   (buildTest)
-import           Test.HUnit
-import qualified Data.ByteString as B
-import           Text.Printf                    (printf)
-import           Data.Char                      (toUpper)
-import           Codec.Midi                     (importFile, Message(TrackEnd), Midi(..))
-import           Euterpea.IO.MIDI               (fromMidi)
-import qualified Euterpea as E
-import           Data.List                      (find, intersect, sort)
+import           Codec.Midi                     (importFile)
 import           Control.Applicative            ((<|>))
+import qualified Data.ByteString                as B
+import           Data.Char                      (toUpper)
+import           Data.List                      (find, intersect, sort)
+import qualified Euterpea                       as E
+import           Euterpea.IO.MIDI               (fromMidi)
 import           System.Directory               (doesFileExist, removeFile)
+import           System.IO.Unsafe               (unsafePerformIO)
 import           System.Random                  (newStdGen, randomRs)
+import           Test.Framework                 (Test, buildTestBracketed,
+                                                 testGroup)
+import           Test.Framework.Providers.HUnit (testCase)
+import           Test.HUnit                     ((@?=), Assertion)
+import           Text.Printf                    (printf)
 
-import           Export
-import           Grammar                 hiding ((<|>))
-import           Music
+import Export
+import Grammar hiding ((<|>))
+import Music
 
 -- | Generates a random filename `f` with the .midi extension, runs the given
 --   test `t` using that filename, and immediately removes the file stored at
 --   location `f` after the test finished. The reason that we have to generate
 --   random file names and cannot use the same one all the time is that tests
 --   can be exectued concurrently.
+testAndCleanup :: (String -> Test) -> Test
 testAndCleanup t = buildTestBracketed $ do
   g     <- newStdGen
   let f = take 8 (randomRs ('a','z') g) ++ ".midi"
@@ -36,6 +37,7 @@ testAndCleanup t = buildTestBracketed $ do
   let cleanup = removeFile f
   return (test, cleanup)
 
+midiTests :: Test
 midiTests = testGroup "MIDI export"
   [ testAndCleanup $ \f -> testCase "Successfully write to file" $ do
       let res = unsafePerformIO $ do
@@ -107,7 +109,7 @@ midiTests = testGroup "MIDI export"
       let mE1 = musicToE m
       unsafePerformIO $ do
         writeToMidiFile f m
-        mE2 <- importFile f >>= \(Right m) -> return (fromMidi m)
+        mE2 <- importFile f >>= \(Right m') -> return (fromMidi m')
         return $ compareMusic1s (preprocess mE1) (preprocess (preprocess mE2))
 
   , testAndCleanup $ \f -> testCase "Parallel music to Midi and back" $ do
@@ -165,7 +167,7 @@ perms' m1 m2 = [(m1',m2') | m1'<-perms m1, m2' <-perms m2]
 --   the Music1 can be compared to the original Music1.)
 preprocess :: E.Music1 -> E.Music1
 preprocess (E.Modify x m) = E.Modify x (preprocess m)
-preprocess (n@(E.Prim (E.Note l1 (i, xs))) E.:=: (E.Prim (E.Rest l2) E.:+: m))
+preprocess (n@(E.Prim (E.Note l1 _)) E.:=: (E.Prim (E.Rest l2) E.:+: m))
   | l1 == l2 = (preprocess n) E.:+: (preprocess m)
   | otherwise = (preprocess n) E.:=: (E.Prim (E.Rest l2) E.:+: (preprocess m))
 preprocess (r@(E.Prim (E.Rest l)) E.:+: m) = if l == 0 then preprocess m else (r E.:+: (preprocess m))
@@ -175,6 +177,6 @@ preprocess (m E.:=: r@(E.Prim (E.Rest l))) = if l == 0 then preprocess m else ((
 preprocess (m1 E.:+: m2) = preprocess m1 E.:+: preprocess m2
 preprocess (m1 E.:=: m2) = preprocess m1 E.:=: preprocess m2
 preprocess (E.Prim (E.Rest l)) = E.Prim (E.Rest l)
-preprocess (E.Prim (E.Note l (i, xs))) = E.Prim (E.Note l (i, filter notVol xs))
+preprocess (E.Prim (E.Note l (x, xs))) = E.Prim (E.Note l (x, filter notVol xs))
   where notVol (E.Volume _) = False
         notVol _            = True

@@ -4,25 +4,28 @@ module TScore where
 
 import qualified Data.Music.Lilypond            as Ly
 import           Data.Ratio
-import           System.IO.Unsafe               (unsafePerformIO)
-import           Test.Framework                 (testGroup, buildTestBracketed)
-import           Test.Framework.Providers.HUnit (testCase)
-import           Test.HUnit
 import           System.Directory               (doesFileExist, removeFile)
+import           System.IO.Unsafe               (unsafePerformIO)
 import           System.Random                  (newStdGen, randomRs)
+import           Test.Framework                 (Test, buildTestBracketed,
+                                                 testGroup)
+import           Test.Framework.Providers.HUnit (testCase)
+import           Test.HUnit                     ((@?=))
 
 import Export
 import Grammar
 import Music
 
 
+testAndCleanup :: (String -> Test) -> Test
 testAndCleanup t = buildTestBracketed $ do
   g     <- newStdGen
   let f = take 8 (randomRs ('a','z') g) ++ ".ly"
-  let test = t f
+  let test' = t f
   let cleanup = removeFile f
-  return (test, cleanup)
+  return (test', cleanup)
 
+scoreTests :: Test
 scoreTests = testGroup "Score"
   [ testAndCleanup $ \t -> testCase "successfully write to file" $ do
       let res = do let ?harmonyConfig = defHarmonyConfig

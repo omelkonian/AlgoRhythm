@@ -5,8 +5,6 @@ module Dynamics ( addDynamics
                 , expPitchDynamics
                 , DynamicsMap) where
 
--- | Can be used to add a `Dynamic` to all notes in a given `Music` composition.
-
 import Data.KMeans (kmeansGen)
 import Data.List   (find)
 import Data.Maybe  (fromJust)

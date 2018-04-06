@@ -41,7 +41,7 @@ main = do
 chaosBlues :: Bool -> IO ()
 chaosBlues addDyn = do
   m <- Gen.genChaosMusic
-  let m' = if addDyn then dyn m else (toMusicCore m)
+  let m' = if addDyn then dyn m else toMusicCore m
   let ?midiConfig = defaultMIDIConfig
   writeToMidiFile "out.midi" m'
   playDev 0 m'
@@ -58,8 +58,7 @@ randomMelody = do
   let ?midiConfig = MIDIConfig (4%4) [AcousticGrandPiano]
   writeToMidiFile "random.midi" m
 
-
---
+-- Jazz example using the primitive generation DSL.
 jazz :: IO ()
 jazz = do
   let ?midiConfig = MIDIConfig (4%4) [AltoSax, AcousticGrandPiano]
@@ -86,7 +85,7 @@ jazz = do
 
   writeToMidiFile "jazz1.midi" (foreground :=: toMusicCore background)
 
--- A piece with fast banjo playing
+-- A piece with fast banjo playing.
 fastBanjo :: IO ()
 fastBanjo = do
   let ?midiConfig = MIDIConfig (6%4) [Banjo, ElectricGuitarMuted]
@@ -116,44 +115,16 @@ fastBanjo = do
 rockOrganBlues :: IO ()
 rockOrganBlues = do
   let ?midiConfig = MIDIConfig (6%4) [RockOrgan, AcousticGrandPiano]
-  let t = 32 * wn
-
   let ?harmonyConfig = HarmonyConfig
         { basePc  = C
         , baseOct = Oct4
         , baseScale = ionian
         , chords  = equally [maj, mi, dim]
         }
-
   let harmonicStructure = foldr1 (:+:) $
-        map (Note hn . uncurry instantiate)
-          [ (E, d7)
-          , (E, d7)
-          , (E, d7)
-          , (E, d7)
-          , (E, d7)
-          , (E, d7)
-          , (E, d7)
-          , (E, d7)
-          , (A, d7)
-          , (A, d7)
-          , (A, d7)
-          , (A, d7)
-          , (E, d7)
-          , (E, d7)
-          , (E, d7)
-          , (E, d7)
-          , (B, d7)
-          , (B, d7)
-          , (A, d7)
-          , (A, d7)
-          , (E, d7)
-          , (E, d7)
-          , (B, d7)
-          , (B, d7)
-          ]
-  let background = (flip (<#)) 3 <$> harmonicStructure
-
+        map (Note hn . (=| d7))
+          [E, E, E, E, E, E, E, E, A, A, A, A, E, E, E, E, B, B, A, A, E, E, B, B]
+  let background = flip (<#) 3 <$> harmonicStructure
   let melodyConfig = Gen.GenConfig
         { Gen.key                = E
         , Gen.baseScale          = blues
@@ -162,16 +133,7 @@ rockOrganBlues = do
         , Gen.octaveDistribution = [(3, 3), (5, 4), (2, 5)]
         }
   foreground <- Gen.runGenerator () (Gen.diatonicMelody melodyConfig)
-
-  let melodyConfig' = Gen.GenConfig
-        { Gen.key                = E
-        , Gen.baseScale          = pentatonicMajor
-        , Gen.chords             = 2##harmonicStructure
-        , Gen.phraseDistribution = [(5, Gen.High), (5, Gen.Medium), (1, Gen.Low)]
-        , Gen.octaveDistribution = [(2, 3), (5, 4), (2, 5)]
-        }
   foreground' <- Gen.runGenerator () (Gen.diatonicMelody melodyConfig)
-
   writeToMidiFile "out.midi" ((foreground :+: foreground') :=: toMusicCore (4##background))
 
 -- Hypnotic passage.

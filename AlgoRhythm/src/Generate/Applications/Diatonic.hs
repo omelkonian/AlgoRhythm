@@ -1,3 +1,8 @@
+{-# OPTIONS_GHC -fno-warn-missing-signatures #-}
+{-# OPTIONS_GHC -fno-warn-name-shadowing #-}
+{-# OPTIONS_GHC -fno-warn-unused-binds #-}
+{-# OPTIONS_GHC -fno-warn-unused-matches #-}
+{-# OPTIONS_GHC -fno-warn-unused-imports #-}
 {-# LANGUAGE RankNTypes       #-}
 {-# LANGUAGE PostfixOperators #-}
 
@@ -6,7 +11,6 @@ module Generate.Applications.Diatonic where
   import Generate.Generate
   import Generate.QuickCheck
   import Music
-  import Data.Ratio
   import Data.List
   import Data.Maybe
   import qualified Control.Arrow as Arrow
@@ -14,7 +18,6 @@ module Generate.Applications.Diatonic where
   import Control.Monad.State
   import Grammar.Utilities
   import Test.QuickCheck
-  import Test.QuickCheck.Gen
   import Generate.Applications.GenConfig
 
 

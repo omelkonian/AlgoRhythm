@@ -37,14 +37,12 @@ bSolo = do
   run1 <- local $ do
     octave   >! (`elem` [4,5])
     duration >! (`elem` [1%32, 1%16])
-    notes <- 12 .#. genNote
-    return $ line notes
+    line <$> 12 .#. genNote
   run2 <- local $ do
     octave     >! (`elem` [2,3,4])
     duration   >! (`elem` [1%8, 1%16])
     pitchClass >! (`elem` [E, Fs, Gs, B, Cs])
-    notes <- 6 .#. genNote
-    return $ line notes
+    line <$> 6 .#. genNote
   return $ run1 :=: run2
 
 -- | The selector that maps the chaos function from `chaos1` to an element in a.
