@@ -1,39 +1,46 @@
-{-# LANGUAGE ImplicitParams   #-}
-{-# LANGUAGE PostfixOperators #-}
-
+{-# LANGUAGE ImplicitParams      #-}
+{-# LANGUAGE PostfixOperators    #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 module Main where
 
-import Dynamics
-import Export
-import Grammar
-import Music
-import qualified Generate as Gen
+import           Dynamics
+import           Export
+import qualified Generate         as Gen
+import           Grammar
+import           Music
+import           System.Directory (createDirectoryIfMissing)
 
 import Control.Monad
 
 main :: IO ()
-main = do
-  let ?harmonyConfig = HarmonyConfig
-        { basePc  = C
-        , baseOct = Oct4
-        , baseScale = japanese
-        , chords  = equally allChords
-        }
-  let ?midiConfig = defaultMIDIConfig
-  let t = 4 * wn
-  harmonicStructure <- runGrammar uuHarmony t ?harmonyConfig
-  background <- voiceLead harmonicStructure
+main = writeManyMidi "MIDI"
 
-  let melodyConfig = Gen.GenConfig
-        { Gen.key                = C
-        , Gen.baseScale          = japanese
-        , Gen.chords             = harmonicStructure
-        , Gen.phraseDistribution = [(1, Gen.High), (1, Gen.Medium), (2, Gen.Low)]
-        , Gen.octaveDistribution = [(1, 3), (3, 4), (2, 5)]
-        }
-  foreground <- Gen.runGenerator () (Gen.diatonicMelody melodyConfig)
+-- Produce many MIDI files for statistics/analysis by Iris.
+writeManyMidi :: FilePath -> IO ()
+writeManyMidi base =
+  forM_ keys $ \k -> forM_ ss $ \(scStr, sc) ->
+    forM_ tempos $ \(tStr, t) -> forM_ [1..10] $ \(c :: Int) -> do
+      let ?harmonyConfig = defHarmonyConfig
+            { basePc  = k
+            , baseScale = sc
+            , baseOct = Oct4
+            }
+      let ?melodyConfig = defMelodyConfig
+            { octaves = [(1, Oct3), (10, Oct4), (15, Oct5), (1, Oct6)] }
+      let ?midiConfig = MIDIConfig t [AcousticGrandPiano]
+      (back, fore) <- integrate (16 * wn)
 
-  playDev 4 $ 2 ## dyn (toMusicCore background :=: toMusicCore foreground)
+      let outpath = base ++ "/" ++ show k ++ "-" ++ scStr ++ "/" ++ tStr ++ "/"
+      createDirectoryIfMissing True outpath
+      writeToMidiFile (outpath ++ "/" ++ show c ++ "-harmony.mid") back
+      writeToMidiFile (outpath ++ "/" ++ show c ++ "-melody.mid") fore
+  where
+    keys = enumFrom C
+    ss = [ ("Major", major), ("Minor", minor), ("HarmonicMinor", harmonicMinor)
+         , ("Japanese", japanese), ("Romanian", romanian)
+         ]
+    tempos = [("Andante", 3%4), ("Moderato", 4%4), ("Allegro", 5%4)]
+
 
 -- | Chaos blues. Generates a short music composition using the Chaos function
 --   represented in Figure 1 of Chaos Melody Theory by Elaine Walker
